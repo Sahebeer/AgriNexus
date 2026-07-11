@@ -1,0 +1,15 @@
+{
+  "name": "agrinexus-ai-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AgriNexus AI - Smart Farm Operating System",
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "web:dev": "npm run dev --workspace=apps/web",
+    "web:build": "npm run build --workspace=apps/web",
+    "web:start": "npm start --workspace=apps/web",
+    "web:lint": "npm run lint --workspace=apps/web"
+  }
+}

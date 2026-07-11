@@ -1,0 +1,48 @@
+# Node / Frontend
+node_modules/
+.next/
+out/
+build/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Python / Backend
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+htmlcov/
+.tox/
+.coverage
+.cache
+.pytest_cache/
+.mypy_cache/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# DB & Migrations
+postgres-data/
+*.db
+*.sqlite3
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.secrets
+
+# Docker
+.docker/
+
+# OS Specific
+.DS_Store
+Thumbs.db

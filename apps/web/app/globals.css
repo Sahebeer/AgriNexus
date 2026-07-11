@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: 'Inter', sans-serif;
+  }
+  
+  body {
+    background-color: #090A0B; /* Dark mode fallback */
+    color: #E9ECF0;
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+  }
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(18, 20, 23, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-hover:hover {
+  background: rgba(26, 29, 33, 0.85);
+  border-color: rgba(0, 200, 117, 0.3);
+  box-shadow: 0 0 20px rgba(0, 200, 117, 0.05);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090A0B;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #22272E;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2D343F;
+}
+
+/* Ambient glow accents */
+.ambient-glow {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 200, 117, 0.08) 0%, rgba(59, 130, 246, 0.03) 50%, rgba(0,0,0,0) 100%);
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+}

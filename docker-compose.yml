@@ -1,0 +1,57 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: agrinexus_db
+    restart: always
+    environment:
+      POSTGRES_USER: agrinexus_user
+      POSTGRES_PASSWORD: agrinexus_password
+      POSTGRES_DB: agrinexus_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agrinexus_user -d agrinexus_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: agrinexus_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://agrinexus_user:agrinexus_password@db:5432/agrinexus_db
+      - SECRET_KEY=supersecretjwtkeyforagrinexusdevonly123!
+      - ENVIRONMENT=development
+    volumes:
+      - ./apps/backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile
+    container_name: agrinexus_web
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NODE_ENV=development
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+
+volumes:
+  postgres-data:
