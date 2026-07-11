@@ -48,26 +48,7 @@ export default function ProfilePage() {
   const [accountError, setAccountError] = useState<string | null>(null);
 
   // Farms states (persisted locally on client for immediate MVP demonstration)
-  const [farms, setFarms] = useState<FarmField[]>([
-    {
-      id: "f1",
-      name: "North Canal Field",
-      size: 2.5,
-      soil_type: "Clay Loam",
-      irrigation_method: "Drip Irrigation",
-      coordinates: "30.9012° N, 75.8568° E",
-      crop_history: "Paddy (Rice) -> Wheat"
-    },
-    {
-      id: "f2",
-      name: "Hill Orchard",
-      size: 1.2,
-      soil_type: "Sandy Loam",
-      irrigation_method: "Micro-sprinkler",
-      coordinates: "31.1048° N, 77.1734° E",
-      crop_history: "Apple Trees"
-    }
-  ]);
+  const [farms, setFarms] = useState<FarmField[]>([]);
   
   // New Farm form state
   const [newFarmName, setNewFarmName] = useState("");
@@ -98,21 +79,58 @@ export default function ProfilePage() {
     }
   }, [user]);
 
-  // Load farms from localstorage if present
+  // Load farms from localstorage keyed by user email
   useEffect(() => {
-    const saved = localStorage.getItem("agrinexus_farms");
+    if (!user?.email) return;
+    
+    const key = `agrinexus_farms_${user.email}`;
+    const saved = localStorage.getItem(key);
+    
     if (saved) {
       try {
         setFarms(JSON.parse(saved));
       } catch (e) {
         console.error("Failed to parse farms", e);
       }
+    } else {
+      // Default dummy farms ONLY if user name or email contains "rajesh"
+      const nameMatch = user.full_name?.toLowerCase().includes("rajesh");
+      const emailMatch = user.email.toLowerCase().includes("rajesh");
+      
+      if (nameMatch || emailMatch) {
+        const dummyFarms = [
+          {
+            id: "f1",
+            name: "North Canal Field",
+            size: 2.5,
+            soil_type: "Clay Loam",
+            irrigation_method: "Drip Irrigation",
+            coordinates: "30.9012° N, 75.8568° E",
+            crop_history: "Paddy (Rice) -> Wheat"
+          },
+          {
+            id: "f2",
+            name: "Hill Orchard",
+            size: 1.2,
+            soil_type: "Sandy Loam",
+            irrigation_method: "Micro-sprinkler",
+            coordinates: "31.1048° N, 77.1734° E",
+            crop_history: "Apple Trees"
+          }
+        ];
+        setFarms(dummyFarms);
+        localStorage.setItem(key, JSON.stringify(dummyFarms));
+      } else {
+        setFarms([]);
+      }
     }
-  }, []);
+  }, [user]);
 
   const saveFarms = (updatedFarms: FarmField[]) => {
     setFarms(updatedFarms);
-    localStorage.setItem("agrinexus_farms", JSON.stringify(updatedFarms));
+    if (user?.email) {
+      localStorage.setItem(`agrinexus_farms_${user.email}`, JSON.stringify(updatedFarms));
+    }
   };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../../store/authStore";
 import { 
@@ -27,6 +27,25 @@ export default function DashboardPage() {
     logout();
     router.push("/login");
   };
+
+  const [nodeCount, setNodeCount] = useState(0);
+
+  useEffect(() => {
+    if (!user?.email) return;
+    const key = `agrinexus_farms_${user.email}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setNodeCount(parsed.length);
+      } catch (e) {
+        setNodeCount(0);
+      }
+    } else {
+      const isRajesh = user.full_name?.toLowerCase().includes("rajesh") || user.email.toLowerCase().includes("rajesh");
+      setNodeCount(isRajesh ? 2 : 0);
+    }
+  }, [user]);
 
   const dashboardCards = [
     {
@@ -136,7 +155,9 @@ export default function DashboardPage() {
               <Activity className="h-5 w-5 text-primary" />
               <div>
                 <div className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold">Node Status</div>
-                <div className="text-xs font-bold text-neutral-200">2 Connected Nodes</div>
+                <div className="text-xs font-bold text-neutral-200">
+                  {nodeCount} Connected {nodeCount === 1 ? "Node" : "Nodes"}
+                </div>
               </div>
             </div>
           </div>
