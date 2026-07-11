@@ -127,7 +127,7 @@ export default function DashboardPage() {
               Hello, {user?.full_name || "Operator"}
             </h1>
             <p className="text-neutral-400 text-sm md:text-base mt-1">
-              Active Location: <span className="text-neutral-200 font-semibold">{user?.state || "Not configured"}</span> | Account Email: {user?.email}
+              Active Location: <span className="text-neutral-200 font-semibold">{user?.state || "Not configured"}</span>
             </p>
           </div>
 
@@ -137,13 +137,6 @@ export default function DashboardPage() {
               <div>
                 <div className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold">Node Status</div>
                 <div className="text-xs font-bold text-neutral-200">2 Connected Nodes</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-neutral-900/60 border border-neutral-850">
-              <CheckCircle2 className="h-5 w-5 text-accent-blue" />
-              <div>
-                <div className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold">API Gateway</div>
-                <div className="text-xs font-bold text-neutral-200">JWT Authorized</div>
               </div>
             </div>
           </div>
