@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import api from "../../../lib/api";
+import { useAuthStore } from "../../../store/authStore";
+import { useToastStore } from "../../../store/toastStore";
 import { 
   ArrowLeft, 
   Bot, 
@@ -15,7 +17,9 @@ import {
   Sparkles,
   ArrowRight,
   RefreshCw,
-  HelpCircle
+  HelpCircle,
+  ThumbsUp,
+  ThumbsDown
 } from "lucide-react";
 
 interface Message {
@@ -31,6 +35,9 @@ interface ChatSession {
 }
 
 export default function AdvisorChatPage() {
+  const { user } = useAuthStore();
+  const { showToast } = useToastStore();
+  
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -38,7 +45,44 @@ export default function AdvisorChatPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   
+  const [weatherData, setWeatherData] = useState<any>(null);
+  const [marketPrices, setMarketPrices] = useState<any[]>([]);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Fetch contextual weather and market prices on login session load
+  useEffect(() => {
+    const fetchContextData = async () => {
+      try {
+        const weatherRes = await api.get("/api/v1/weather/forecast");
+        setWeatherData(weatherRes.data);
+      } catch (e) {
+        console.error("Failed to load weather context for advisor:", e);
+      }
+      try {
+        const priceRes = await api.get("/api/v1/prices/market");
+        setMarketPrices(priceRes.data);
+      } catch (e) {
+        console.error("Failed to load prices context for advisor:", e);
+      }
+    };
+    if (user) {
+      fetchContextData();
+    }
+  }, [user]);
+
+  const handleFeedback = async (messageId: number, isPositive: boolean) => {
+    try {
+      await api.post(`/api/v1/advisor/feedback/${messageId}`, {
+        thumbs_up: isPositive,
+        thumbs_down: !isPositive
+      });
+      showToast("Thank you for your feedback!", "success");
+    } catch (err) {
+      console.error("Failed to log message feedback:", err);
+      showToast("Could not submit feedback.", "error");
+    }
+  };
 
   // Suggested prompt pills
   const promptPills = [
@@ -106,10 +150,26 @@ export default function AdvisorChatPage() {
     };
     setMessages((prev) => [...prev, tempUserMsg]);
 
+    // Fetch user farms from localStorage
+    let farms = [];
+    if (user?.email) {
+      try {
+        const stored = localStorage.getItem(`agrinexus_farms_${user.email}`);
+        if (stored) farms = JSON.parse(stored);
+      } catch (e) {
+        console.error("Local storage farm parsing error inside chat:", e);
+      }
+    }
+
     try {
       const res = await api.post("/api/v1/advisor/chat", {
         content: userText,
-        session_id: activeSessionId || undefined
+        session_id: activeSessionId || undefined,
+        farmer_context: {
+          farms: farms,
+          weather: weatherData,
+          prices: marketPrices
+        }
       });
 
       // Update active session ID and reload threads
@@ -365,7 +425,7 @@ export default function AdvisorChatPage() {
                       )}
                       
                       {/* Message Bubble */}
-                      <div className={`p-4 rounded-2xl max-w-[85%] border shadow-sm ${
+                      <div className={`p-4 rounded-2xl max-w-[85%] border shadow-sm relative ${
                         isUser 
                           ? "bg-primary border-primary text-neutral-950 font-medium rounded-tr-none" 
                           : "glass border-neutral-800 text-neutral-100 rounded-tl-none"
@@ -373,7 +433,26 @@ export default function AdvisorChatPage() {
                         {isUser ? (
                           <p className="text-sm leading-relaxed">{msg.content}</p>
                         ) : (
-                          <div>{renderMessageContent(msg.content)}</div>
+                          <div>
+                            {renderMessageContent(msg.content)}
+                            <div className="flex gap-2 items-center mt-3 pt-2 border-t border-neutral-800/40 text-[10px] text-neutral-400">
+                              <span>Was this helpful?</span>
+                              <button 
+                                onClick={() => handleFeedback(msg.id, true)} 
+                                className="p-1 rounded hover:bg-neutral-800 hover:text-primary transition-colors"
+                                title="Helpful"
+                              >
+                                <ThumbsUp className="h-3 w-3" />
+                              </button>
+                              <button 
+                                onClick={() => handleFeedback(msg.id, false)} 
+                                className="p-1 rounded hover:bg-neutral-800 hover:text-red-400 transition-colors"
+                                title="Not helpful"
+                              >
+                                <ThumbsDown className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
 

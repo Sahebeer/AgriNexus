@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import api from "../../../lib/api";
 import { useAuthStore } from "../../../store/authStore";
+import { useToastStore } from "../../../store/toastStore";
 import { 
   ArrowLeft, 
   User, 
@@ -29,11 +30,13 @@ interface FarmField {
   soil_type: string;
   irrigation_method: string;
   coordinates: string;
+  crop: string;
   crop_history: string;
 }
 
 export default function ProfilePage() {
   const { user, checkAuth } = useAuthStore();
+  const { showToast } = useToastStore();
   
   // Tab control
   const [activeTab, setActiveTab] = useState<"account" | "farms">("account");
@@ -56,8 +59,18 @@ export default function ProfilePage() {
   const [newSoilType, setNewSoilType] = useState("Loam");
   const [newIrrigation, setNewIrrigation] = useState("Drip Irrigation");
   const [newCoordinates, setNewCoordinates] = useState("");
+  const [newCrop, setNewCrop] = useState("Rice");
   const [newCropHistory, setNewCropHistory] = useState("");
   const [showAddFarm, setShowAddFarm] = useState(false);
+
+  const cropsList = [
+    "Rice", "Wheat", "Corn", "Barley", "Millet", "Sorghum", "Oats",
+    "Chickpeas (Gram)", "Lentils (Masoor)", "Pigeon Peas (Tur)", "Mung Beans",
+    "Tomato", "Potato", "Onion", "Garlic", "Ginger", "Chilli", "Cabbage", "Cauliflower", "Okra (Bhindi)", "Brinjal",
+    "Apple", "Mango", "Banana", "Guava", "Orange", "Pomegranate", "Grapes", "Papaya",
+    "Cotton", "Sugarcane", "Tea", "Coffee", "Rubber", "Tobacco",
+    "Mustard", "Soybean", "Groundnut", "Sunflower", "Sesame", "Oil Palm"
+  ];
 
   const statesList = [
     "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", 
@@ -153,8 +166,11 @@ export default function ProfilePage() {
       await checkAuth(); // Reload user context in Zustand
       setAccountSuccess(true);
       setPassword("");
+      showToast("Credentials updated successfully!", "success");
     } catch (err: any) {
-      setAccountError(err.response?.data?.detail || "Failed to update profile settings.");
+      const errMsg = err.response?.data?.detail || "Failed to update profile settings.";
+      setAccountError(errMsg);
+      showToast(errMsg, "error");
     } finally {
       setIsUpdatingAccount(false);
     }
@@ -171,6 +187,7 @@ export default function ProfilePage() {
       soil_type: newSoilType,
       irrigation_method: newIrrigation,
       coordinates: newCoordinates || "Not recorded",
+      crop: newCrop,
       crop_history: newCropHistory || "None logged"
     };
 
@@ -183,13 +200,16 @@ export default function ProfilePage() {
     setNewSoilType("Loam");
     setNewIrrigation("Drip Irrigation");
     setNewCoordinates("");
+    setNewCrop("Rice");
     setNewCropHistory("");
     setShowAddFarm(false);
+    showToast("New field registered successfully!", "success");
   };
 
   const handleDeleteFarm = (id: string) => {
     const updated = farms.filter((f) => f.id !== id);
     saveFarms(updated);
+    showToast("Field profile deleted.", "info");
   };
 
   return (
@@ -460,16 +480,33 @@ export default function ProfilePage() {
                       </select>
                     </div>
 
+                    {/* Primary Crop */}
+                    <div>
+                      <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+                        Primary Crop *
+                      </label>
+                      <select
+                        value={newCrop}
+                        onChange={(e) => setNewCrop(e.target.value)}
+                        className="w-full bg-neutral-900 border border-neutral-800 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl py-3 px-4 text-sm text-white outline-none appearance-none"
+                        required
+                      >
+                        {cropsList.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+
                     {/* Crop History */}
                     <div>
                       <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
-                        Crop History / Rotation
+                        Crop Rotation History
                       </label>
                       <input
                         type="text"
                         value={newCropHistory}
                         onChange={(e) => setNewCropHistory(e.target.value)}
-                        placeholder="e.g. Wheat -> Maize"
+                        placeholder="e.g. Wheat → Rice → Fallow"
                         className="w-full bg-neutral-900 border border-neutral-800 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl py-3 px-4 text-sm text-white outline-none"
                       />
                     </div>
@@ -513,8 +550,15 @@ export default function ProfilePage() {
                       <div className="bg-primary/10 border border-primary/20 p-2 rounded-lg text-primary">
                         <Map className="h-5 w-5" />
                       </div>
-                      <div>
-                        <h4 className="font-bold text-white text-base">{farm.name}</h4>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-bold text-white text-base">{farm.name}</h4>
+                          {farm.crop && (
+                            <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
+                              {farm.crop}
+                            </span>
+                          )}
+                        </div>
                         <span className="text-xs text-neutral-500 font-semibold">{farm.size} Hectares</span>
                       </div>
                     </div>
@@ -536,7 +580,11 @@ export default function ProfilePage() {
                         </span>
                       </div>
                       <div>
-                        <span className="text-neutral-500 block">Crop History</span>
+                        <span className="text-neutral-500 block">Primary Crop</span>
+                        <span className="text-primary block mt-0.5 font-bold">{farm.crop || "Not set"}</span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-neutral-500 block">Crop Rotation History</span>
                         <span className="text-neutral-200 block mt-0.5">{farm.crop_history}</span>
                       </div>
                     </div>

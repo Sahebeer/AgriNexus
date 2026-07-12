@@ -20,9 +20,12 @@ class MatchResponse(BaseModel):
     name: str
     agency: str
     category: str
+    scope: str = "National"
     description: str
     benefits: str
     documents: List[str]
+    helpline: str = ""
+    portal_url: str = ""
     checklist: List[CriterionMatch]
     match_score: int
 

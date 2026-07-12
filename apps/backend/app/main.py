@@ -9,7 +9,8 @@ from app.api.schemes import router as schemes_router
 from app.api.weather import router as weather_router
 from app.api.prices import router as prices_router
 from app.db.database import engine, Base
-from app.models.chat import ChatMessage # For schema bootstrapping
+from app.models.chat import ChatMessage, ChatMessageFeedback # For schema bootstrapping
+from app.models.scan import ScanLog # For schema bootstrapping
 
 # Create database tables if they don't exist yet (automatic bootstrapping for dev)
 try:

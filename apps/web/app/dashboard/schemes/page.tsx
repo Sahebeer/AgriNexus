@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import api from "../../../lib/api";
 import { useAuthStore } from "../../../store/authStore";
+import { useToastStore } from "../../../store/toastStore";
 import { 
   ArrowLeft, 
   Coins, 
@@ -20,7 +21,9 @@ import {
   CheckSquare,
   Square,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  ExternalLink,
+  Phone
 } from "lucide-react";
 
 interface CriterionMatch {
@@ -34,15 +37,19 @@ interface SchemeRecommendation {
   name: string;
   agency: string;
   category: string;
+  scope: string;
   description: string;
   benefits: string;
   documents: string[];
+  helpline: string;
+  portal_url: string;
   checklist: CriterionMatch[];
   match_score: number;
 }
 
 export default function SchemesPage() {
   const { user } = useAuthStore();
+  const { showToast } = useToastStore();
   
   // Filter states
   const [farmSize, setFarmSize] = useState<number>(1.5);
@@ -69,12 +76,42 @@ export default function SchemesPage() {
     "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
   ];
 
-  const availableCrops = ["Rice", "Wheat", "Tomato", "Potato", "Corn", "Apple"];
+  const availableCrops = [
+    "Rice", "Wheat", "Corn", "Barley", "Millet", "Sorghum", "Oats",
+    "Chickpeas (Gram)", "Lentils (Masoor)", "Pigeon Peas (Tur)", "Mung Beans",
+    "Tomato", "Potato", "Onion", "Garlic", "Ginger", "Chilli", "Cabbage", "Cauliflower", "Okra (Bhindi)", "Brinjal",
+    "Apple", "Mango", "Banana", "Guava", "Orange", "Pomegranate", "Grapes", "Papaya",
+    "Cotton", "Sugarcane", "Tea", "Coffee", "Rubber", "Tobacco",
+    "Mustard", "Soybean", "Groundnut", "Sunflower", "Sesame", "Oil Palm"
+  ];
 
-  // Default pre-population from profile on mount
+  // Default pre-population from profile and localStorage active fields on mount
   useEffect(() => {
     if (user?.state) {
       setSelectedState(user.state);
+    }
+    
+    if (user?.email) {
+      try {
+        const stored = localStorage.getItem(`agrinexus_farms_${user.email}`);
+        if (stored) {
+          const farms = JSON.parse(stored);
+          if (farms && farms.length > 0) {
+            // Sum up total land area across all fields
+            const totalSize = farms.reduce((sum: number, f: any) => sum + (parseFloat(f.size) || 0), 0);
+            if (totalSize > 0) setFarmSize(Math.round(totalSize * 10) / 10);
+            
+            // Pre-select primary crops from registered fields (f.crop = dedicated select field)
+            const crops = farms
+              .map((f: any) => f.crop || f.crop_history || "")
+              .filter((c: string) => c.trim() !== "" && c !== "None logged");
+            const uniqueCrops = Array.from(new Set(crops)) as string[];
+            if (uniqueCrops.length > 0) setSelectedCrops(uniqueCrops);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse farms for scheme recommendation:", e);
+      }
     }
   }, [user]);
 
@@ -135,6 +172,7 @@ export default function SchemesPage() {
     }));
     // Close modal on click
     setSelectedScheme((prev: any) => prev ? { ...prev, isApplied: true } : null);
+    showToast("Application submitted successfully to gateway!", "success");
   };
 
   return (
@@ -289,9 +327,16 @@ export default function SchemesPage() {
                     className="glass border border-neutral-800 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row justify-between gap-6 transition-all duration-300 hover:border-neutral-700"
                   >
                     <div className="flex-1 space-y-4">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary">
                           {rec.category}
+                        </span>
+                        <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${
+                          rec.scope === "State"
+                            ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                            : "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                        }`}>
+                          {rec.scope === "State" ? "State Scheme" : "Central Scheme"}
                         </span>
                         <span className="text-xs text-neutral-500">{rec.agency}</span>
                       </div>
@@ -325,6 +370,17 @@ export default function SchemesPage() {
                       </div>
 
                       <div className="w-full space-y-2">
+                        {rec.portal_url && (
+                          <a
+                            href={rec.portal_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1 transition-all"
+                          >
+                            Official Portal
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        )}
                         <button
                           onClick={() => setSelectedScheme(rec)}
                           className="w-full bg-neutral-900 hover:bg-neutral-850 border border-neutral-800 hover:border-neutral-700 text-neutral-200 font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1 transition-all"
@@ -338,17 +394,17 @@ export default function SchemesPage() {
                           className={`w-full font-bold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 ${
                             appliedSchemes[rec.id]
                               ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-                              : "bg-primary hover:bg-primary-600 text-neutral-950 shadow-[0_0_10px_rgba(0,200,117,0.1)]"
+                              : "bg-neutral-800 hover:bg-neutral-700 text-neutral-200"
                           }`}
                           disabled={!!appliedSchemes[rec.id]}
                         >
                           {appliedSchemes[rec.id] ? (
                             <>
                               <CheckCircle className="h-4 w-4" />
-                              Applied Online
+                              Saved to Profile
                             </>
                           ) : (
-                            "Apply Online"
+                            "Save to Profile"
                           )}
                         </button>
                       </div>
@@ -381,8 +437,15 @@ export default function SchemesPage() {
                   className="glass border border-neutral-800 rounded-2xl p-6 flex flex-col justify-between hover:border-neutral-700 transition-all group"
                 >
                   <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-neutral-900 border border-neutral-850 text-neutral-400">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${
+                        scheme.scope === "State"
+                          ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                          : "bg-neutral-900 border-neutral-850 text-neutral-400"
+                      }`}>
+                        {scheme.scope === "State" ? "State" : "Central"}
+                      </span>
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-neutral-900 border border-neutral-850 text-neutral-500">
                         {scheme.category}
                       </span>
                     </div>
@@ -460,6 +523,35 @@ export default function SchemesPage() {
                 </div>
               </div>
 
+              {/* Helpline & Portal */}
+              {(selectedScheme.helpline || selectedScheme.portal_url) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {selectedScheme.helpline && (
+                    <div className="p-4 rounded-xl bg-neutral-900/60 border border-neutral-850 flex items-start gap-3">
+                      <Phone className="h-4 w-4 text-neutral-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Helpline Number</div>
+                        <div className="text-xs text-neutral-200 font-semibold">{selectedScheme.helpline}</div>
+                      </div>
+                    </div>
+                  )}
+                  {selectedScheme.portal_url && (
+                    <a
+                      href={selectedScheme.portal_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-4 rounded-xl bg-primary/5 border border-primary/15 flex items-center gap-3 hover:bg-primary/10 transition-all group"
+                    >
+                      <ExternalLink className="h-4 w-4 text-primary flex-shrink-0" />
+                      <div>
+                        <div className="text-[10px] font-bold text-primary/70 uppercase tracking-widest mb-0.5">Official Government Portal</div>
+                        <div className="text-xs text-primary font-semibold group-hover:underline truncate max-w-[160px]">{selectedScheme.portal_url.replace(/https?:\/\//, "")}</div>
+                      </div>
+                    </a>
+                  )}
+                </div>
+              )}
+
               {/* Required Documents */}
               <div>
                 <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Required Application Documents</h4>
@@ -480,26 +572,19 @@ export default function SchemesPage() {
                 onClick={() => setSelectedScheme(null)}
                 className="flex-1 bg-neutral-900 hover:bg-neutral-850 border border-neutral-850 text-neutral-200 font-semibold py-3 rounded-xl text-xs transition-colors"
               >
-                Cancel
+                Close
               </button>
-              <button
-                onClick={() => handleApplyScheme(selectedScheme.id)}
-                className={`flex-[2] font-bold py-3 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 ${
-                  appliedSchemes[selectedScheme.id] || selectedScheme.isApplied
-                    ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-                    : "bg-primary hover:bg-primary-600 text-neutral-950 shadow-[0_0_15px_rgba(0,200,117,0.15)]"
-                }`}
-                disabled={!!appliedSchemes[selectedScheme.id] || selectedScheme.isApplied}
-              >
-                {appliedSchemes[selectedScheme.id] || selectedScheme.isApplied ? (
-                  <>
-                    <CheckCircle className="h-4 w-4" />
-                    Applied Successfully
-                  </>
-                ) : (
-                  "Confirm Application & Submit"
-                )}
-              </button>
+              {selectedScheme.portal_url && (
+                <a
+                  href={selectedScheme.portal_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-[2] bg-primary hover:bg-primary-600 text-neutral-950 font-bold py-3 rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(0,200,117,0.15)]"
+                >
+                  Apply on Official Portal
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              )}
             </div>
           </div>
         </div>
