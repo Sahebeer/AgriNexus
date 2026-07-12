@@ -1,7 +1,6 @@
 services:
   db:
     image: postgres:15-alpine
-    container_name: agrinexus_db
     restart: always
     environment:
       POSTGRES_USER: agrinexus_user
@@ -21,7 +20,6 @@ services:
     build:
       context: ./apps/backend
       dockerfile: Dockerfile
-    container_name: agrinexus_backend
     restart: always
     ports:
       - "8000:8000"
@@ -39,7 +37,6 @@ services:
     build:
       context: .
       dockerfile: ./apps/web/Dockerfile
-    container_name: agrinexus_web
     restart: always
     ports:
       - "3000:3000"
