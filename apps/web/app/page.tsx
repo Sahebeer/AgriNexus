@@ -21,6 +21,16 @@ import {
 export default function Home() {
   const [activeTab, setActiveTab] = useState("disease");
 
+  const handleNavClick = (id: string, tabId?: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
+    if (tabId) {
+      setActiveTab(tabId);
+    }
+  };
+
   const modules = [
     {
       id: "disease",
@@ -67,10 +77,10 @@ export default function Home() {
           </div>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-neutral-400">
-            <a href="#features" className="hover:text-primary transition-colors">OS Modules</a>
-            <a href="#platform" className="hover:text-primary transition-colors">AI Core</a>
-            <a href="#schemes" className="hover:text-primary transition-colors">Schemes</a>
-            <a href="#docs" className="hover:text-primary transition-colors">System Docs</a>
+            <button onClick={() => handleNavClick("features")} className="hover:text-primary transition-colors">OS Modules</button>
+            <button onClick={() => handleNavClick("platform", "disease")} className="hover:text-primary transition-colors">AI Core</button>
+            <button onClick={() => handleNavClick("platform", "schemes")} className="hover:text-primary transition-colors">Schemes</button>
+            <button onClick={() => handleNavClick("docs")} className="hover:text-primary transition-colors">System Docs</button>
           </nav>
 
           <div className="flex items-center gap-4">
@@ -119,7 +129,7 @@ export default function Home() {
           </div>
 
           {/* Mockup Showcase Panel */}
-          <div className="relative glass rounded-3xl p-2 border border-neutral-800 shadow-2xl max-w-5xl mx-auto overflow-hidden animate-slide-up" style={{ animationDelay: "300ms" }}>
+          <div id="platform" className="relative glass rounded-3xl p-2 border border-neutral-800 shadow-2xl max-w-5xl mx-auto overflow-hidden animate-slide-up" style={{ animationDelay: "300ms" }}>
             <div className="glass bg-neutral-900/90 rounded-[22px] border border-neutral-800/80 p-6 flex flex-col md:flex-row gap-6">
               {/* Mockup Sidebar */}
               <div className="w-full md:w-64 flex flex-col gap-2 text-left">
@@ -233,6 +243,49 @@ export default function Home() {
             </div>
           </div>
         </section>
+        {/* System Docs Section */}
+        <section id="docs" className="py-24 border-t border-neutral-900 bg-neutral-950/40 relative">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+              <div className="lg:col-span-5 space-y-6 text-left">
+                <span className="text-xs font-bold text-primary uppercase tracking-widest">Developer Reference</span>
+                <h2 className="font-display text-3xl md:text-4xl font-bold text-white tracking-tight">
+                  AgriNexus API & System Docs
+                </h2>
+                <p className="text-neutral-400 text-sm md:text-base leading-relaxed">
+                  Connect third-party IoT soil sensors, custom fertilizer channels, or export disease diagnostic logs. Access complete FastAPI OpenAPI payloads with a single credential.
+                </p>
+                <div className="flex gap-4">
+                  <a 
+                    href="http://localhost:8000/docs" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="bg-neutral-900 hover:bg-neutral-850 border border-neutral-800 hover:border-neutral-700 text-white font-semibold px-5 py-2.5 rounded-xl text-xs transition-all flex items-center gap-1.5 group"
+                  >
+                    API Swagger Guide
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                  </a>
+                </div>
+              </div>
+
+              <div className="lg:col-span-7 glass border border-neutral-800 rounded-3xl p-6 md:p-8 text-left bg-neutral-900/40 font-mono text-xs text-neutral-400 space-y-4">
+                <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+                  <span className="text-neutral-300 font-bold">sensor_ingress_gateway.sh</span>
+                  <span className="text-emerald-400 font-bold">● Active</span>
+                </div>
+                <div className="space-y-2">
+                  <p><span className="text-neutral-500"># Send local soil moisture telemetry payload</span></p>
+                  <p><span className="text-primary">curl</span> -X POST "http://localhost:8000/api/v1/telemetry" \</p>
+                  <p>  -H "Authorization: Bearer $AGRINEXUS_JWT" \</p>
+                  <p>  -H "Content-Type: application/json" \</p>
+                  <p>  {"-d '{\"sensor_id\": \"moisture_field_02\", \"depth_cm\": 15, \"pct\": 42.8}'"}</p>
+                  <p className="text-neutral-500 mt-2">// Response 200 OK</p>
+                  <p className="text-emerald-400">{"{\"status\": \"Ingested\", \"warning\": null, \"irrigation_required\": false}"}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
 
       {/* Footer */}
@@ -244,8 +297,8 @@ export default function Home() {
           </div>
           <p>© 2026 AgriNexus AI Inc. All rights reserved. Professional graduation project.</p>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-neutral-300">API Policy</a>
-            <a href="#" className="hover:text-neutral-300">Terms of Service</a>
+            <Link href="/api-policy" className="hover:text-neutral-300">API Policy</Link>
+            <Link href="/terms" className="hover:text-neutral-300">Terms of Service</Link>
           </div>
         </div>
       </footer>
