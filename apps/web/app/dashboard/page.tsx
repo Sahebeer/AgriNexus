@@ -16,7 +16,9 @@ import {
   Shield,
   Activity,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  ShoppingCart,
+  CalendarDays
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -101,6 +103,24 @@ export default function DashboardPage() {
       color: "text-neutral-400 bg-neutral-800/40 border-neutral-800",
       actionText: "Edit Details",
       path: "/dashboard/profile"
+    },
+    {
+      title: "Smart Shopping List",
+      desc: "Generate a complete farm inputs list — seeds, fertilizers, pesticides, and tools — scaled to your crop and field size.",
+      icon: ShoppingCart,
+      tag: "New",
+      color: "text-teal-400 bg-teal-500/10 border-teal-500/20",
+      actionText: "Generate List",
+      path: "/dashboard/shopping"
+    },
+    {
+      title: "Crop Calendar",
+      desc: "Auto-generate a complete farming schedule from land prep to post-harvest based on your crop and sowing date.",
+      icon: CalendarDays,
+      tag: "New",
+      color: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
+      actionText: "Create Schedule",
+      path: "/dashboard/calendar"
     }
   ];
 

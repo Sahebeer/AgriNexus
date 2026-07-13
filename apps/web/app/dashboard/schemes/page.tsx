@@ -124,7 +124,8 @@ export default function SchemesPage() {
       const res = await api.get("/api/v1/schemes/recommend", {
         params: {
           farm_size: farmSize,
-          crops: cropsParam
+          crops: cropsParam,
+          state: selectedState || ""
         }
       });
       setRecommendations(res.data);

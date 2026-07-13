@@ -34,21 +34,28 @@ def recommend_schemes(
     *,
     farm_size: float = 1.0,
     crops: Optional[str] = "",
+    state: Optional[str] = "",
     current_user: User = Depends(deps.get_current_active_user)
 ) -> Any:
     """
     Evaluates eligibility parameters against the central and state scheme registries
     and returns a tailored list of subsidies.
+    
+    The `state` param is the filter-selected state from the UI dropdown.
+    If empty, falls back to the farmer's registered profile state.
     """
     # 1. Parse crops comma-separated string
     crops_list = []
     if crops:
         crops_list = [c.strip() for c in crops.split(",") if c.strip()]
-        
+
+    # 2. Resolve which state to match against:
+    #    UI-selected state takes priority; fallback to profile state
+    resolved_state = (state or "").strip() or (current_user.state or "")
+
     try:
-        # 2. Query the recommendation service
         results = get_recommended_schemes(
-            user_state=current_user.state or "",
+            user_state=resolved_state,
             farm_size=farm_size,
             active_crops=crops_list
         )

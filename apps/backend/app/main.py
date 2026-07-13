@@ -8,9 +8,13 @@ from app.api.advisor import router as advisor_router
 from app.api.schemes import router as schemes_router
 from app.api.weather import router as weather_router
 from app.api.prices import router as prices_router
+from app.api.shopping import router as shopping_router
+from app.api.calendar import router as calendar_router
 from app.db.database import engine, Base
 from app.models.chat import ChatMessage, ChatMessageFeedback # For schema bootstrapping
 from app.models.scan import ScanLog # For schema bootstrapping
+from app.models.shopping import ShoppingList, ShoppingListItem # For schema bootstrapping
+from app.models.calendar import CropCalendar, CalendarEvent # For schema bootstrapping for dev)
 
 # Create database tables if they don't exist yet (automatic bootstrapping for dev)
 try:
@@ -41,6 +45,8 @@ app.include_router(advisor_router, prefix=f"{settings.API_V1_STR}/advisor", tags
 app.include_router(schemes_router, prefix=f"{settings.API_V1_STR}/schemes", tags=["schemes"])
 app.include_router(weather_router, prefix=f"{settings.API_V1_STR}/weather", tags=["weather"])
 app.include_router(prices_router, prefix=f"{settings.API_V1_STR}/prices", tags=["prices"])
+app.include_router(shopping_router, prefix=f"{settings.API_V1_STR}/shopping", tags=["shopping"])
+app.include_router(calendar_router, prefix=f"{settings.API_V1_STR}/calendar", tags=["calendar"])
 
 @app.get("/")
 def root_redirect():
