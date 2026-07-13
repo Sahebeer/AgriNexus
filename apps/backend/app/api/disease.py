@@ -8,6 +8,7 @@ from app.db.database import get_db
 from app.models.user import User
 from app.models.scan import ScanLog
 from app.services.disease import classify_leaf_image
+from app.services.activity_logger import log_activity
 
 router = APIRouter()
 
@@ -62,6 +63,23 @@ async def detect_leaf_disease(
         
         # Include logged database entry ID to payload
         prediction_results["scan_log_id"] = db_log.id
+
+        # Auto-log to farm activity diary
+        try:
+            disease_name = prediction_results.get("disease", "Unknown")
+            confidence = prediction_results.get("confidence", 0.0)
+            log_activity(
+                db,
+                user_id=current_user.id,
+                activity_type="Disease Scan",
+                title=f"Disease Scan: {disease_name}",
+                description=f"Leaf image scanned. Prediction: {disease_name} at {confidence:.1%} confidence.",
+                source="auto",
+                metadata={"scan_log_id": db_log.id, "disease": disease_name, "confidence": round(confidence, 4)},
+            )
+        except Exception:
+            pass  # Never let activity logging break the scan response
+
         return prediction_results
 
     except ValueError as ve:

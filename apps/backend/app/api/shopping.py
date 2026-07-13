@@ -8,6 +8,7 @@ from app.db.database import get_db
 from app.models.user import User
 from app.models.shopping import ShoppingList, ShoppingListItem
 from app.services.shopping import generate_shopping_list
+from app.services.activity_logger import log_activity
 
 router = APIRouter()
 
@@ -120,6 +121,22 @@ def generate_and_save(
 
     db.commit()
     db.refresh(db_list)
+
+    # Auto-log to farm activity diary
+    try:
+        log_activity(
+            db,
+            user_id=current_user.id,
+            activity_type="Shopping List",
+            title=f"Shopping List: {db_list.name}",
+            description=f"Generated farm inputs list for {payload.crop}, {payload.farm_size} Ha — ₹{data['estimated_total_cost']:,.0f} estimated.",
+            crop=payload.crop,
+            source="auto",
+            metadata={"list_id": db_list.id, "total_cost": data["estimated_total_cost"], "item_count": len(data["items"])},
+        )
+    except Exception:
+        pass
+
     return db_list
 
 

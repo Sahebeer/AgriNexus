@@ -10,11 +10,17 @@ from app.api.weather import router as weather_router
 from app.api.prices import router as prices_router
 from app.api.shopping import router as shopping_router
 from app.api.calendar import router as calendar_router
+from app.api.activity import router as activity_router
+from app.api.expenses import router as expenses_router
+from app.api.mandi import router as mandi_router
 from app.db.database import engine, Base
 from app.models.chat import ChatMessage, ChatMessageFeedback # For schema bootstrapping
 from app.models.scan import ScanLog # For schema bootstrapping
 from app.models.shopping import ShoppingList, ShoppingListItem # For schema bootstrapping
 from app.models.calendar import CropCalendar, CalendarEvent # For schema bootstrapping for dev)
+from app.models.activity import ActivityLog # For schema bootstrapping
+from app.models.expense import Expense # For schema bootstrapping
+from app.models.mandi import MandiListing # For schema bootstrapping
 
 # Create database tables if they don't exist yet (automatic bootstrapping for dev)
 try:
@@ -47,6 +53,9 @@ app.include_router(weather_router, prefix=f"{settings.API_V1_STR}/weather", tags
 app.include_router(prices_router, prefix=f"{settings.API_V1_STR}/prices", tags=["prices"])
 app.include_router(shopping_router, prefix=f"{settings.API_V1_STR}/shopping", tags=["shopping"])
 app.include_router(calendar_router, prefix=f"{settings.API_V1_STR}/calendar", tags=["calendar"])
+app.include_router(activity_router, prefix=f"{settings.API_V1_STR}/activity", tags=["activity"])
+app.include_router(expenses_router, prefix=f"{settings.API_V1_STR}/expenses", tags=["expenses"])
+app.include_router(mandi_router, prefix=f"{settings.API_V1_STR}/mandi", tags=["mandi"])
 
 @app.get("/")
 def root_redirect():

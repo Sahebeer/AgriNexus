@@ -107,6 +107,38 @@ def generate_advisor_response(
             prices_str = ", ".join([f"{item.get('commodity')}: {item.get('price')}/qtl" for item in p[:3]])
             context_bulletpoints.append(f"- Local Market Rates: {prices_str}")
 
+    # Inject Disease Scan History context
+    if farmer_context and "scans" in farmer_context:
+        sc = farmer_context["scans"]
+        if isinstance(sc, list) and len(sc) > 0:
+            sc_str = ", ".join([f"{item.get('disease')} (confidence: {item.get('confidence'):.0%}, date: {item.get('date')})" for item in sc[:3]])
+            context_bulletpoints.append(f"- Disease Scan History: {sc_str}")
+
+    # Inject Expense logs context
+    if farmer_context and "expenses" in farmer_context:
+        ex = farmer_context["expenses"]
+        if isinstance(ex, list) and len(ex) > 0:
+            ex_str = ", ".join([f"{item.get('category')} (₹{item.get('amount'):.0f}, date: {item.get('date')})" for item in ex[:4]])
+            context_bulletpoints.append(f"- Recent Expenses: {ex_str}")
+
+    # Inject Crop Calendars and upcoming schedules context
+    if farmer_context and "calendars" in farmer_context:
+        cals = farmer_context["calendars"]
+        if isinstance(cals, list) and len(cals) > 0:
+            cals_desc = []
+            for c in cals[:2]:
+                evs = c.get("upcoming_events", [])
+                evs_str = ", ".join([f"{e.get('title')} on {e.get('date')}" for e in evs])
+                cals_desc.append(f"{c.get('name')} (sow_date: {c.get('sow_date')}, upcoming: {evs_str})")
+            context_bulletpoints.append(f"- Active Crop Schedules: {'; '.join(cals_desc)}")
+
+    # Inject Activity logs context
+    if farmer_context and "activities" in farmer_context:
+        acts = farmer_context["activities"]
+        if isinstance(acts, list) and len(acts) > 0:
+            acts_str = ", ".join([f"{item.get('title')} ({item.get('date')})" for item in acts[:3]])
+            context_bulletpoints.append(f"- Recent Activity timeline logs: {acts_str}")
+
     context_block = "\n".join(context_bulletpoints) if context_bulletpoints else "None (Query the user politely if you need profile details)."
 
     # 2. Retrieve RAG facts
@@ -143,6 +175,7 @@ def generate_advisor_response(
                 "3. Multilingualism: Match the user's input language. If they ask in English, reply in English. If they query in Hindi or Hinglish (Roman script, e.g. 'cotton me leaves yellow ho rahi hai', 'urea kab daalein'), reply in natural Romanized Hinglish.\n"
                 "4. Intelligent Follow-up: If critical info is missing to solve their query (e.g. they say 'spots are on my leaves' but don't state the crop type), do not diagnose blindly. Ask polite, smart follow-up questions one by one.\n"
                 "5. Safety & Trustworthiness: Ground all advice in the RAG block or established scientific practices. Suggest checking with local extension officers for severe or ambiguous pathogen outbreaks.\n"
+                "6. Proactive Farm Assistant: Be proactive! If the user greets you or asks a general question, inspect their Disease Scan History (e.g. if they had a recent leaf spot scan), Expense logs (e.g. if they spend a lot on fertilizers), or Active Crop Schedules (e.g. upcoming sowing or irrigation events) and offer helpful, smart suggestions/tips before they even ask.\n"
             )
             response = chat.send_message(system_instruction + "\n\nUser Message: " + user_message)
             return response.text

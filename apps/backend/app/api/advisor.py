@@ -8,7 +8,12 @@ from app.api import deps
 from app.db.database import get_db
 from app.models.user import User
 from app.models.chat import ChatMessage, ChatMessageFeedback
+from app.models.scan import ScanLog
+from app.models.expense import Expense
+from app.models.calendar import CropCalendar
+from app.models.activity import ActivityLog
 from app.services.advisor import generate_advisor_response
+from app.services.activity_logger import log_activity
 
 router = APIRouter()
 
@@ -121,16 +126,58 @@ def post_chat_message(
     )
     history_list = [{"sender": msg.sender, "content": msg.content} for msg in history]
 
-    # 3. Generate advisor answer
+    # 3. Gather rich database context for personalization & proactivity
+    scans = db.query(ScanLog).filter(ScanLog.user_id == current_user.id).order_by(ScanLog.created_at.desc()).limit(5).all()
+    scans_list = [
+        {"disease": s.predicted_disease_id, "confidence": s.confidence, "date": s.created_at.strftime("%Y-%m-%d")}
+        for s in scans
+    ]
+
+    expenses = db.query(Expense).filter(Expense.user_id == current_user.id).order_by(Expense.expense_date.desc()).limit(10).all()
+    expenses_list = [
+        {"category": e.category, "amount": e.amount, "crop": e.crop, "date": e.expense_date.strftime("%Y-%m-%d")}
+        for e in expenses
+    ]
+
+    calendars = db.query(CropCalendar).filter(CropCalendar.user_id == current_user.id).order_by(CropCalendar.created_at.desc()).limit(3).all()
+    calendars_list = []
+    for c in calendars:
+        upcoming_events = [
+            {"title": ev.title, "type": ev.event_type, "date": str(ev.scheduled_date)}
+            for ev in c.events if not ev.is_completed
+        ]
+        calendars_list.append({
+            "name": c.name,
+            "crop": c.crop,
+            "sow_date": str(c.sow_date),
+            "upcoming_events": upcoming_events[:3]
+        })
+
+    activities = db.query(ActivityLog).filter(ActivityLog.user_id == current_user.id).order_by(ActivityLog.activity_date.desc()).limit(5).all()
+    activities_list = [
+        {"type": a.activity_type, "title": a.title, "date": a.activity_date.strftime("%Y-%m-%d")}
+        for a in activities
+    ]
+
+    # Combine UI context with database resolved logs
+    enriched_context = message_in.farmer_context or {}
+    enriched_context.update({
+        "scans": scans_list,
+        "expenses": expenses_list,
+        "calendars": calendars_list,
+        "activities": activities_list
+    })
+
+    # 4. Generate advisor answer using context
     ai_response_text = generate_advisor_response(
         message_in.content,
         history_list,
-        farmer_context=message_in.farmer_context,
+        farmer_context=enriched_context,
         profile_state=current_user.state,
         profile_name=current_user.full_name
     )
 
-    # 4. Save AI's response
+    # 5. Save AI's response
     ai_msg = ChatMessage(
         user_id=current_user.id,
         session_id=session_id,
@@ -141,6 +188,21 @@ def post_chat_message(
     db.add(ai_msg)
     db.commit()
     db.refresh(ai_msg)
+
+    # Auto-log new conversation starts to the farm activity diary
+    if is_new_session:
+        try:
+            log_activity(
+                db,
+                user_id=current_user.id,
+                activity_type="AI Chat",
+                title=f"AI Advisor: {session_title[:60]}",
+                description=f"Started a new advisory conversation: \"{message_in.content[:120]}\"",
+                source="auto",
+                metadata={"session_id": session_id, "session_title": session_title},
+            )
+        except Exception:
+            pass
 
     return ai_msg
 

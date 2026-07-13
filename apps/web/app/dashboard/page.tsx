@@ -18,7 +18,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   ShoppingCart,
-  CalendarDays
+  CalendarDays,
+  Store
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -87,13 +88,13 @@ export default function DashboardPage() {
       path: "/dashboard/weather"
     },
     {
-      title: "Market Prices",
-      desc: "Analyze real-time MSP indices, wholesale commodity prices, and market predictions.",
-      icon: TrendingUp,
-      tag: "Mocked",
+      title: "Mandi Marketplace",
+      desc: "Compare regional mandi prices, track demand indices, and list your crops for sale to active buyers.",
+      icon: Store,
+      tag: "New",
       color: "text-purple-400 bg-purple-500/10 border-purple-500/20",
-      actionText: "Compare Prices",
-      path: "/dashboard/prices"
+      actionText: "Enter Market",
+      path: "/dashboard/mandi"
     },
     {
       title: "Operator Profile",
@@ -121,6 +122,24 @@ export default function DashboardPage() {
       color: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
       actionText: "Create Schedule",
       path: "/dashboard/calendar"
+    },
+    {
+      title: "Activity Timeline",
+      desc: "Maintain a digital farming diary. Review auto-logged scans, advisor advice, inputs, and manual field records.",
+      icon: Activity,
+      tag: "New",
+      color: "text-rose-400 bg-rose-500/10 border-rose-500/20",
+      actionText: "Open Diary",
+      path: "/dashboard/timeline"
+    },
+    {
+      title: "AI Expense Optimizer",
+      desc: "Track operation costs, analyze seasonal spending proportions, and let the AI find savings opportunities.",
+      icon: Coins,
+      tag: "New",
+      color: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+      actionText: "Optimize Costs",
+      path: "/dashboard/expenses"
     }
   ];
 

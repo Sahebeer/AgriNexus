@@ -9,6 +9,7 @@ from app.db.database import get_db
 from app.models.user import User
 from app.models.calendar import CropCalendar, CalendarEvent
 from app.services.calendar_gen import generate_calendar_events
+from app.services.activity_logger import log_activity
 
 router = APIRouter()
 
@@ -108,6 +109,22 @@ def create_calendar(
 
     db.commit()
     db.refresh(db_cal)
+
+    # Auto-log to farm activity diary
+    try:
+        log_activity(
+            db,
+            user_id=current_user.id,
+            activity_type="Calendar Created",
+            title=f"Crop Calendar: {db_cal.name}",
+            description=f"Created farming schedule for {payload.crop} sown on {payload.sow_date}. {len(events)} activities scheduled.",
+            crop=payload.crop,
+            source="auto",
+            metadata={"calendar_id": db_cal.id, "sow_date": str(payload.sow_date), "event_count": len(events)},
+        )
+    except Exception:
+        pass
+
     return db_cal
 
 
