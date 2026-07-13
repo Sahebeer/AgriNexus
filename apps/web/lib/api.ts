@@ -4,16 +4,29 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export const api = axios.create({
   baseURL: API_URL,
+  timeout: 8000,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Interceptor to inject JWT token in request headers
+// Interceptor to inject JWT token and dynamically adjust backend API URL for host IP access
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("agrinexus_token");
+      const hostname = window.location.hostname;
+      // Adjust backend URL dynamically if accessing from a non-localhost IP on local network
+      if (hostname && hostname !== "localhost" && hostname !== "127.0.0.1" && !hostname.includes("vercel.app")) {
+        config.baseURL = `http://${hostname}:8000`;
+      }
+      
+      let token = null;
+      try {
+        token = localStorage.getItem("agrinexus_token");
+      } catch (e) {
+        console.warn("LocalStorage access restricted:", e);
+      }
+      
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }

@@ -107,11 +107,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   checkAuth: async () => {
     set({ isLoading: true });
-    const token = localStorage.getItem("agrinexus_token");
+    let token = null;
+    try {
+      token = localStorage.getItem("agrinexus_token");
+    } catch (e) {
+      console.warn("Could not read auth token from local storage:", e);
+    }
+    
     if (!token) {
       set({ token: null, user: null, isAuthenticated: false, isLoading: false });
       return;
     }
+    
     try {
       const res = await api.get("/api/v1/auth/me");
       set({
@@ -121,7 +128,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
       });
     } catch (err) {
-      localStorage.removeItem("agrinexus_token");
+      try {
+        localStorage.removeItem("agrinexus_token");
+      } catch (e) {}
       set({ token: null, user: null, isAuthenticated: false, isLoading: false });
     }
   },

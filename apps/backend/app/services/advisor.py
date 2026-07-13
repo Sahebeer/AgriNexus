@@ -84,20 +84,41 @@ def generate_advisor_response(
             field_descriptions = []
             for f in farms_data:
                 name = f.get("name", "Unnamed Field")
-                size = f.get("size", "Unknown size")
-                soil = f.get("soil_type", "Unknown soil")
-                irrigation = f.get("irrigation_method", "Unknown irrigation")
-                crop = f.get("crop", "Unknown")
-                desc = f"{name} ({size} Ha, Crop: {crop}, soil texture: {soil}, water: {irrigation})"
+                area = f.get("area") or f.get("size", "Unknown size")
+                soil = f.get("soil_type")
+                if not soil and f.get("soil_reports") and len(f["soil_reports"]) > 0:
+                    soil = f["soil_reports"][0].get("soil_texture")
+                soil = soil or "Unknown soil"
                 
+                irrigation = f.get("irrigation_method", "Unknown irrigation")
+                crop = f.get("current_crop") or f.get("crop", "Unknown")
+                desc = f"{name} ({area} Ha, Crop: {crop}, soil texture: {soil}, water: {irrigation})"
+                
+                # Inject soil report context
                 sh = f.get("soil_health")
+                if not sh and f.get("soil_reports") and len(f["soil_reports"]) > 0:
+                    sh = f["soil_reports"][0]
                 if sh:
                     desc += (
-                        f" [Soil Report: pH: {sh.get('ph')}, N: {sh.get('nitrogen')} mg/kg, "
+                        f" [Soil Health: pH: {sh.get('ph')}, N: {sh.get('nitrogen')} mg/kg, "
                         f"P: {sh.get('phosphorus')} mg/kg, K: {sh.get('potassium')} mg/kg, "
-                        f"Moisture: {sh.get('soil_moisture')}%, Carbon: {sh.get('organic_carbon')}%, "
-                        f"EC: {sh.get('electrical_conductivity')} dS/m, Temp: {sh.get('temperature')}°C]"
+                        f"Moisture: {sh.get('soil_moisture')}%, Carbon: {sh.get('organic_carbon')}%]"
                     )
+                
+                # Ingest Earth Intelligence Engine AI Projections
+                ef = f.get("earth_forecasts")
+                if ef and len(ef) > 0:
+                    forecast_advisories = []
+                    for fore in ef:
+                        forecast_advisories.append(
+                            f"{fore.get('window').upper()} Forecast: NDVI {fore.get('predicted_ndvi')}, "
+                            f"Stress {int(fore.get('crop_stress_index')*100)}%, "
+                            f"IrrigDemand {int(fore.get('irrigation_demand_index')*100)}%, "
+                            f"DiseaseRisk {int(fore.get('disease_risk_index')*100)}%. "
+                            f"Analysis: {fore.get('explanation')}"
+                        )
+                    desc += f" [Earth AI Forecasts: {'; '.join(forecast_advisories)}]"
+                
                 field_descriptions.append(desc)
             context_bulletpoints.append(f"- Registered Farm Fields: {'; '.join(field_descriptions)}")
             

@@ -42,11 +42,12 @@ services:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - NODE_ENV=development
+      - NODE_ENV=production
     volumes:
-      - ./apps/web:/app
+      - ./apps/web:/app/apps/web
       - /app/node_modules
-      - /app/.next
+      - /app/apps/web/node_modules
+      - /app/apps/web/.next
     depends_on:
       - backend
 

@@ -9,6 +9,8 @@ from app.api import deps
 from app.db.database import get_db
 from app.models.user import User
 from app.models.expense import Expense
+from app.models.farm import Farm
+from app.models.satellite import EarthIntelligenceForecast
 from app.services.expense_optimizer import analyze_expenses_with_ai
 from app.services.activity_logger import log_activity
 

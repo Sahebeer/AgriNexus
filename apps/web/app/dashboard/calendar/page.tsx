@@ -175,12 +175,52 @@ export default function CalendarPage() {
   const eventsByDate = useMemo(() => {
     const map: Record<string, CalendarEvent[]> = {};
     if (!activeCalendar) return map;
+    
+    // Ingest actual database events
     activeCalendar.events.forEach(ev => {
       const key = ev.scheduled_date.slice(0, 10);
       (map[key] = map[key] ?? []).push(ev);
     });
+
+    // Ingest Earth Intelligence Engine projections directly into calendar grids
+    try {
+      if (typeof window !== "undefined" && user?.email) {
+        const stored = localStorage.getItem(`agrinexus_farms_${user.email}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          for (const farm of parsed) {
+            if (farm.current_crop.toLowerCase() === activeCalendar.crop.toLowerCase()) {
+              const forecasts = farm.earth_forecasts || [];
+              forecasts.forEach((fore: any) => {
+                const dayOffset = fore.window === "weekly" ? 7 : fore.window === "monthly" ? 30 : 90;
+                const foreDate = new Date(new Date().getTime() + dayOffset * 24 * 60 * 60 * 1000)
+                  .toISOString()
+                  .slice(0, 10);
+
+                if (fore.crop_stress_index > 0.4 || fore.irrigation_demand_index > 0.5) {
+                  const isWater = fore.irrigation_demand_index > 0.5;
+                  const eieEvent: CalendarEvent = {
+                    id: -500 - dayOffset,
+                    event_type: isWater ? "Watering / Irrigation" : "Plant Health Inspection",
+                    title: isWater ? "Earth AI: Irrigation Deficit Advisory" : "Earth AI: Veg Vigor Decline Alert",
+                    description: fore.explanation,
+                    scheduled_date: foreDate,
+                    das: Math.round((new Date(foreDate).getTime() - new Date(farm.sowing_date).getTime()) / (24*60*60*1000)),
+                    is_completed: false,
+                    notes: `AI generated projection from downscaled moisture telemetry for field "${farm.name}".`
+                  };
+
+                  (map[foreDate] = map[foreDate] ?? []).push(eieEvent);
+                }
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {}
+
     return map;
-  }, [activeCalendar]);
+  }, [activeCalendar, user]);
 
   const calendarDays = useMemo(() => {
     const year = calMonth.getFullYear();

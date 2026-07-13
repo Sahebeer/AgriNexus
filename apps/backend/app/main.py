@@ -23,6 +23,7 @@ from app.models.activity import ActivityLog # For schema bootstrapping
 from app.models.expense import Expense # For schema bootstrapping
 from app.models.mandi import MandiListing # For schema bootstrapping
 from app.models.farm import Farm, SoilReport # For schema bootstrapping
+from app.models.satellite import SatelliteObservation, EarthIntelligenceForecast # For schema bootstrapping
 
 # Create database tables if they don't exist yet (automatic bootstrapping for dev)
 try:
@@ -36,15 +37,14 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-# Set all CORS enabled origins
-if settings.BACKEND_CORS_ORIGINS:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.BACKEND_CORS_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# Set CORS allowed origins matching localhost and private subnets (192.168.x.x, 172.x.x.x, 10.x.x.x)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex="https?://(localhost|127\\.0\\.0\\.1|192\\.168\\.[0-9]+\\.[0-9]+|172\\.[0-9]+\\.[0-9]+\\.[0-9]+|10\\.[0-9]+\\.[0-9]+\\.[0-9]+)(:[0-9]+)?",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Include Routers
 app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])

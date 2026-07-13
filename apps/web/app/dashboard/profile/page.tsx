@@ -112,7 +112,10 @@ export default function ProfilePage() {
 
   // Tab Control
   const [activeTab, setActiveTab] = useState<"account" | "farms">("account");
-  const [activeSubTab, setActiveSubTab] = useState<"details" | "soil" | "history">("details");
+  const [activeSubTab, setActiveSubTab] = useState<"details" | "soil" | "history" | "earth">("details");
+  const [satelliteHistory, setSatelliteHistory] = useState<any[]>([]);
+  const [earthForecasts, setEarthForecasts] = useState<any[]>([]);
+  const [isLoadingEIE, setIsLoadingEIE] = useState(false);
 
   // Account form states
   const [fullName, setFullName] = useState("");
@@ -171,6 +174,11 @@ export default function ProfilePage() {
     try {
       const res = await api.get("/api/v1/farms/");
       setFarms(res.data);
+      if (user?.email) {
+        try {
+          localStorage.setItem(`agrinexus_farms_${user.email}`, JSON.stringify(res.data));
+        } catch (e) {}
+      }
       if (res.data.length > 0) {
         // Keep active farm updated if already selected, or default to first
         setActiveFarm(prev => {
@@ -186,6 +194,29 @@ export default function ProfilePage() {
       setIsLoadingFarms(false);
     }
   };
+
+  const fetchEIEData = async (farmId: number) => {
+    setIsLoadingEIE(true);
+    try {
+      const [histRes, foreRes] = await Promise.all([
+        api.get(`/api/v1/farms/${farmId}/satellite-history`),
+        api.get(`/api/v1/farms/${farmId}/earth-forecasts`)
+      ]);
+      setSatelliteHistory(histRes.data);
+      setEarthForecasts(foreRes.data);
+    } catch {
+      showToast("EIE engine failed to query downscaled observations", "error");
+    } finally {
+      setIsLoadingEIE(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubTab === "earth" && activeFarm) {
+      fetchEIEData(activeFarm.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSubTab, activeFarm]);
 
   useEffect(() => {
     if (activeTab === "farms") {
@@ -515,9 +546,9 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  {/* Sub tabs: Details, Soil metrics gauges, Soil History chart */}
-                  <div className="flex border-b border-neutral-900 max-w-sm">
-                    {["details", "soil", "history"].map(tab => (
+                  {/* Sub tabs: Details, Soil metrics gauges, Soil History chart, Earth Intelligence */}
+                  <div className="flex border-b border-neutral-900 max-w-md">
+                    {["details", "soil", "history", "earth"].map(tab => (
                       <button
                         key={tab}
                         onClick={() => setActiveSubTab(tab as any)}
@@ -525,7 +556,7 @@ export default function ProfilePage() {
                           activeSubTab === tab ? "border-primary text-primary" : "border-transparent text-neutral-500 hover:text-neutral-300"
                         }`}
                       >
-                        {tab}
+                        {tab === "details" ? "Details" : tab === "soil" ? "Soil Health" : tab === "history" ? "Soil History" : "Earth AI"}
                       </button>
                     ))}
                   </div>
@@ -762,6 +793,278 @@ export default function ProfilePage() {
                                   </div>
                                 </div>
                               ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* SUB TAB 4: EARTH INTELLIGENCE ENGINE */}
+                  {activeSubTab === "earth" && (
+                    <div className="space-y-6 animate-fade-in text-left">
+                      {isLoadingEIE ? (
+                        <div className="flex flex-col justify-center items-center py-20 gap-3">
+                          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+                          <span className="text-xs text-neutral-500 font-bold uppercase tracking-wider">
+                            Consulting Sentinel & Weather models...
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="space-y-6">
+                          {/* Overview metrics card */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                            {/* Health score gauge card */}
+                            <div className="glass border border-neutral-800 rounded-3xl p-5 flex flex-col justify-between">
+                              <div>
+                                <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest block mb-2">
+                                  Farm Health Index
+                                </span>
+                                {(() => {
+                                  const latestFore = earthForecasts.find(f => f.window === "weekly");
+                                  const stress = latestFore ? latestFore.crop_stress_index : 0.15;
+                                  const health = Math.round((1 - stress) * 100);
+                                  return (
+                                    <div className="flex items-baseline gap-2">
+                                      <h3 className="text-4xl font-extrabold text-white">{health}%</h3>
+                                      <span className={`text-[9px] font-bold border px-2 py-0.5 rounded-full ${
+                                        health >= 80 ? "text-emerald-400 border-emerald-500/20 bg-emerald-500/10" : "text-amber-400 border-amber-500/20 bg-amber-500/10"
+                                      }`}>
+                                        {health >= 80 ? "EXCELLENT" : "STRESSED"}
+                                      </span>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                              <span className="text-[10px] text-neutral-600 font-semibold leading-relaxed mt-4 block">
+                                Calculated from soil hydration, weather trend pressure, and vegetation indices.
+                              </span>
+                            </div>
+
+                            {/* NDVI Vigor card */}
+                            <div className="glass border border-neutral-800 rounded-3xl p-5 flex flex-col justify-between">
+                              <div>
+                                <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest block mb-2">
+                                  Vegetative Vigor (NDVI)
+                                </span>
+                                {(() => {
+                                  const currentObs = satelliteHistory[0];
+                                  const ndvi = currentObs ? currentObs.ndvi : 0.65;
+                                  return (
+                                    <div className="flex items-baseline gap-2">
+                                      <h3 className="text-4xl font-extrabold text-white">{ndvi.toFixed(2)}</h3>
+                                      <span className="text-[9px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full uppercase">
+                                        Active Canopy
+                                      </span>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                              <span className="text-[10px] text-neutral-600 font-semibold leading-relaxed mt-4 block">
+                                Derived from Sentinel-2 MSI band calculations. Optimal vigor target: 0.60 - 0.88.
+                              </span>
+                            </div>
+
+                            {/* Leaf moisture (NDWI) card */}
+                            <div className="glass border border-neutral-800 rounded-3xl p-5 flex flex-col justify-between">
+                              <div>
+                                <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest block mb-2">
+                                  Hydric Saturation (NDWI)
+                                </span>
+                                {(() => {
+                                  const currentObs = satelliteHistory[0];
+                                  const ndwi = currentObs ? currentObs.ndwi : 0.45;
+                                  return (
+                                    <div className="flex items-baseline gap-2">
+                                      <h3 className="text-4xl font-extrabold text-white">{ndwi.toFixed(2)}</h3>
+                                      <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full uppercase">
+                                        Hydrated
+                                      </span>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                              <span className="text-[10px] text-neutral-600 font-semibold leading-relaxed mt-4 block">
+                                Corresponds to foliage water density. High values mitigate critical irrigation demand.
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* SVG Multi-Window chart of historical & future predicted NDVI */}
+                          {satelliteHistory.length > 0 && earthForecasts.length > 0 && (
+                            <div className="glass border border-neutral-800 rounded-3xl p-6 space-y-4">
+                              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest block">
+                                Vigor Cycle Trajectory (Current + Forecast)
+                              </span>
+                              <div className="h-44 w-full relative border-b border-l border-neutral-800 pt-4 pl-4 pr-4">
+                                {(() => {
+                                  const histPoints = satelliteHistory.slice(0, 3).reverse().map((h) => ({
+                                    label: new Date(h.observation_date + "T00:00:00").toLocaleDateString("en-IN", { month: "short", day: "numeric" }),
+                                    val: h.ndvi,
+                                    isFore: false
+                                  }));
+                                  
+                                  const forePoints = ["weekly", "monthly", "seasonal"].map(w => {
+                                    const match = earthForecasts.find(f => f.window === w);
+                                    return {
+                                      label: match ? `+${match.window === 'weekly' ? '7d' : match.window === 'monthly' ? '30d' : '90d'}` : w,
+                                      val: match ? match.predicted_ndvi : 0.65,
+                                      isFore: true
+                                    };
+                                  });
+
+                                  const combined = [...histPoints, ...forePoints];
+
+                                  return (
+                                    <>
+                                      <svg className="w-full h-full" viewBox="0 0 100 30" preserveAspectRatio="none">
+                                        <line x1="0" y1="10" x2="100" y2="10" stroke="#262626" strokeWidth="0.3" strokeDasharray="2,2" />
+                                        <line x1="0" y1="20" x2="100" y2="20" stroke="#262626" strokeWidth="0.3" strokeDasharray="2,2" />
+
+                                        <path
+                                          d={combined
+                                            .map((p, idx) => {
+                                              const x = (idx / (combined.length - 1)) * 100;
+                                              const y = 30 - ((p.val - 0.1) / 0.8) * 30;
+                                              return `${idx === 0 ? "M" : "L"} ${x} ${y}`;
+                                            })
+                                            .join(" ")}
+                                          fill="none"
+                                          stroke="#00C875"
+                                          strokeWidth="1.5"
+                                        />
+
+                                        {combined.map((p, idx) => {
+                                          const x = (idx / (combined.length - 1)) * 100;
+                                          const y = 30 - ((p.val - 0.1) / 0.8) * 30;
+                                          return (
+                                            <circle
+                                              key={idx}
+                                              cx={x}
+                                              cy={y}
+                                              r="1.5"
+                                              fill={p.isFore ? "#ffb020" : "#ffffff"}
+                                              stroke="#00C875"
+                                              strokeWidth="1"
+                                            />
+                                          );
+                                        })}
+                                      </svg>
+                                      <div className="flex justify-between text-[8px] text-neutral-600 mt-2 font-semibold">
+                                        {combined.map((p, idx) => (
+                                          <span key={idx} className={p.isFore ? "text-amber-500" : "text-neutral-500"}>
+                                            {p.label}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                              <div className="flex gap-4 text-[10px] text-neutral-600 justify-end pt-1">
+                                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-white border border-primary"></span> Historical Readings</span>
+                                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-500"></span> AI Projections</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Forecasting Windows cards list */}
+                          <div className="space-y-4">
+                            <span className="text-xs font-bold text-neutral-400 uppercase tracking-widest block">
+                              Explainable AI Advisory Timeline
+                            </span>
+                            
+                            <div className="grid grid-cols-1 gap-6">
+                              {["weekly", "monthly", "seasonal"].map(win => {
+                                const f = earthForecasts.find(item => item.window === win);
+                                if (!f) return null;
+
+                                return (
+                                  <div
+                                    key={win}
+                                    className="glass border border-neutral-800 rounded-3xl p-6 flex flex-col md:flex-row justify-between gap-6 hover:border-neutral-700 transition-all duration-300"
+                                  >
+                                    <div className="space-y-3 flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold text-white uppercase tracking-wider bg-neutral-900 border border-neutral-800 px-3 py-1 rounded-full">
+                                          {win === "weekly" ? "7-Day Forecast" : win === "monthly" ? "30-Day Forecast" : "Seasonal (90d) Forecast"}
+                                        </span>
+                                        <span className="text-[10px] text-neutral-500 font-semibold">
+                                          Target: {new Date(f.target_date + "T00:00:00").toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
+                                        </span>
+                                      </div>
+                                      
+                                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 text-xs font-semibold">
+                                        <div>
+                                          <span className="text-neutral-500 block">Forecast NDVI</span>
+                                          <span className="text-white block mt-1 font-bold">{f.predicted_ndvi.toFixed(2)}</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-neutral-500 block">Yield Index</span>
+                                          <span className={`block mt-1 font-bold ${f.yield_trend >= 1.0 ? "text-emerald-400" : "text-red-400"}`}>
+                                            {f.yield_trend >= 1.0 ? "+" : ""}{Math.round((f.yield_trend - 1) * 100)}%
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <span className="text-neutral-500 block">Soil Degradation</span>
+                                          <span className="text-neutral-200 block mt-1">{(100 - f.soil_fertility_index * 100).toFixed(0)}%</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-neutral-500 block">Risk Matrix</span>
+                                          <span className={`block mt-1 font-bold ${
+                                            f.crop_stress_index > 0.5 ? "text-red-400" : "text-emerald-400"
+                                          }`}>
+                                            {f.crop_stress_index > 0.5 ? "CRITICAL" : "NORMAL"}
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      <div className="bg-primary/5 border border-primary/10 p-4 rounded-2xl flex items-start gap-2.5 text-xs">
+                                        <AlertCircle className="h-4.5 w-4.5 text-primary flex-shrink-0 mt-0.5" />
+                                        <p className="text-neutral-300 leading-relaxed">{f.explanation}</p>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex flex-col justify-around gap-4 min-w-[200px] border-t md:border-t-0 md:border-l border-neutral-900/60 pt-4 md:pt-0 md:pl-6">
+                                      <div className="space-y-1.5 text-xs font-bold">
+                                        <div className="flex justify-between">
+                                          <span className="text-neutral-400">Crop Stress</span>
+                                          <span className={f.crop_stress_index > 0.5 ? "text-red-400" : "text-emerald-400"}>
+                                            {Math.round(f.crop_stress_index * 100)}%
+                                          </span>
+                                        </div>
+                                        <div className="h-1.5 bg-neutral-900 rounded-full overflow-hidden">
+                                          <div className={`h-full ${f.crop_stress_index > 0.5 ? "bg-red-500" : "bg-emerald-500"}`} style={{ width: `${f.crop_stress_index * 100}%` }}></div>
+                                        </div>
+                                      </div>
+
+                                      <div className="space-y-1.5 text-xs font-bold">
+                                        <div className="flex justify-between">
+                                          <span className="text-neutral-400">Irrigation Demand</span>
+                                          <span className={f.irrigation_demand_index > 0.6 ? "text-blue-400" : "text-neutral-400"}>
+                                            {Math.round(f.irrigation_demand_index * 100)}%
+                                          </span>
+                                        </div>
+                                        <div className="h-1.5 bg-neutral-900 rounded-full overflow-hidden">
+                                          <div className="h-full bg-blue-500" style={{ width: `${f.irrigation_demand_index * 100}%` }}></div>
+                                        </div>
+                                      </div>
+
+                                      <div className="space-y-1.5 text-xs font-bold">
+                                        <div className="flex justify-between">
+                                          <span className="text-neutral-400">Pathogen / Disease Risk</span>
+                                          <span className={f.disease_risk_index > 0.5 ? "text-rose-400" : "text-neutral-400"}>
+                                            {Math.round(f.disease_risk_index * 100)}%
+                                          </span>
+                                        </div>
+                                        <div className="h-1.5 bg-neutral-900 rounded-full overflow-hidden">
+                                          <div className="h-full bg-rose-500" style={{ width: `${f.disease_risk_index * 100}%` }}></div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         </div>

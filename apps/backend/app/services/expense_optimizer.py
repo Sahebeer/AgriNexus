@@ -131,8 +131,24 @@ def analyze_expenses_with_ai(
                 f"- State: {user_state}\n"
                 f"- Farm Size: {total_hectares} Hectares\n"
                 f"- Primary Crop: {primary_crop}\n\n"
-                f"=== DETAILED EXPENSES ===\n"
             )
+
+            if farm_context:
+                prompt += "=== SATELLITE & SOIL PREDICTIONS (EARTH INTELLIGENCE ENGINE) ===\n"
+                for f in farm_context:
+                    eie = f.get("eie_forecast")
+                    if eie:
+                        prompt += (
+                            f"- Field: {f.get('name')}\n"
+                            f"  * Predicted Crop Vigor (NDVI): {eie.get('ndvi')}\n"
+                            f"  * Crop stress level: {eie.get('crop_stress')}\n"
+                            f"  * Irrigation demand index: {eie.get('irrigation_demand')}\n"
+                            f"  * Disease / Pathogen risk index: {eie.get('disease_risk')}\n"
+                            f"  * AI Soil/Vigor advisory: {eie.get('advisory')}\n"
+                        )
+                prompt += "\n"
+
+            prompt += "=== DETAILED EXPENSES ===\n"
             for exp in expenses:
                 prompt += f"- {exp['category']}: ₹{exp['amount']} ({exp.get('description', '')})\n"
 

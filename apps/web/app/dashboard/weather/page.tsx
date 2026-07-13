@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import api from "../../../lib/api";
+import { useAuthStore } from "../../../store/authStore";
 import { 
   ArrowLeft, 
   CloudSun, 
@@ -52,12 +53,44 @@ export default function WeatherPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { user } = useAuthStore();
+
   const fetchWeather = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const res = await api.get("/api/v1/weather/forecast");
-      setData(res.data);
+      
+      const eieAdvisories: string[] = [];
+      try {
+        if (typeof window !== "undefined" && user?.email) {
+          const stored = localStorage.getItem(`agrinexus_farms_${user.email}`);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            for (const farm of parsed) {
+              const forecasts = farm.earth_forecasts || [];
+              const weekly = forecasts.find((f: any) => f.window === "weekly");
+              if (weekly) {
+                if (weekly.crop_stress_index > 0.4) {
+                  eieAdvisories.push(
+                    `[Earth AI - ${farm.name}] Elevated crop stress warning (${Math.round(weekly.crop_stress_index * 100)}%). Analysis: ${weekly.explanation}`
+                  );
+                }
+                if (weekly.irrigation_demand_index > 0.5) {
+                  eieAdvisories.push(
+                    `[Earth AI - ${farm.name}] High evapotranspiration and soil moisture depletion predicted. Consider scheduling watering cycles.`
+                  );
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {}
+
+      setData({
+        ...res.data,
+        advisories: [...res.data.advisories, ...eieAdvisories]
+      });
     } catch (err: any) {
       setError("Failed to retrieve microclimate forecast. Please verify server connection.");
     } finally {
@@ -67,7 +100,8 @@ export default function WeatherPage() {
 
   useEffect(() => {
     fetchWeather();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const getWeatherIcon = (cond: string) => {
     const c = cond.toLowerCase();

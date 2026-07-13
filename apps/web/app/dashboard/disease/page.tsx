@@ -4,6 +4,7 @@ import React, { useState, useRef } from "react";
 import Link from "next/link";
 import api from "../../../lib/api";
 import { useToastStore } from "../../../store/toastStore";
+import { useAuthStore } from "../../../store/authStore";
 import { 
   ArrowLeft, 
   UploadCloud, 
@@ -45,6 +46,7 @@ interface DiagnosisResult {
 
 export default function DiseaseDetectionPage() {
   const { showToast } = useToastStore();
+  const { user } = useAuthStore();
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -53,6 +55,32 @@ export default function DiseaseDetectionPage() {
   const [error, setError] = useState<string | null>(null);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [hasSentFeedback, setHasSentFeedback] = useState(false);
+
+  const [eieWarning] = useState<{ farmName: string, risk: number, crop: string, advisory: string } | null>(() => {
+    if (typeof window !== "undefined" && user?.email) {
+      try {
+        const stored = localStorage.getItem(`agrinexus_farms_${user.email}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          for (const farm of parsed) {
+            const forecasts = farm.earth_forecasts || [];
+            const highRisk = forecasts.find((f: any) => f.disease_risk_index > 0.5);
+            if (highRisk) {
+              return {
+                farmName: farm.name,
+                risk: Math.round(highRisk.disease_risk_index * 100),
+                crop: farm.current_crop,
+                advisory: highRisk.explanation
+              };
+            }
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return null;
+  });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -183,6 +211,24 @@ export default function DiseaseDetectionPage() {
             Upload high-resolution photographs of diseased crop leaves. The PyTorch deep model will resolve symptoms to localized treatment protocols.
           </p>
         </div>
+
+        {eieWarning && (
+          <div className="mb-8 bg-red-950/20 border border-red-500/20 rounded-3xl p-6 flex items-start gap-4 animate-fade-in text-left">
+            <AlertTriangle className="h-6 w-6 text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                Earth Intelligence Warning: Fungal Pathogen Exposure
+              </h4>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                Weather trends and satellite moisture levels for field <strong className="text-white">"{eieWarning.farmName}"</strong> ({eieWarning.crop}) 
+                indicate an elevated <strong className="text-red-400">{eieWarning.risk}% Risk</strong> of disease spread.
+              </p>
+              <p className="text-xs text-neutral-300 italic pt-1">
+                Recommendation: "{eieWarning.advisory}"
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Scanner column */}

@@ -14,6 +14,9 @@ COPY apps/web ./apps/web
 
 WORKDIR /app/apps/web
 
+# Build Next.js app inside monorepo
+RUN npm run build
+
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "start"]

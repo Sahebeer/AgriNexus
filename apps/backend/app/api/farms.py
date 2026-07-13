@@ -8,7 +8,9 @@ from app.api import deps
 from app.db.database import get_db
 from app.models.user import User
 from app.models.farm import Farm, SoilReport
+from app.models.satellite import SatelliteObservation, EarthIntelligenceForecast
 from app.services.activity_logger import log_activity
+from app.services.earth_intelligence import calculate_explainable_forecasts
 
 router = APIRouter()
 
@@ -64,6 +66,39 @@ class SoilReportOut(BaseModel):
         from_attributes = True
 
 
+class SatelliteObservationOut(BaseModel):
+    id: int
+    farm_id: int
+    observation_date: date
+    ndvi: float
+    ndwi: float
+    cloud_cover: float
+    source: str
+    created_at: Any
+
+    class Config:
+        from_attributes = True
+
+
+class EarthIntelligenceForecastOut(BaseModel):
+    id: int
+    farm_id: int
+    forecast_date: date
+    target_date: date
+    window: str
+    predicted_ndvi: float
+    crop_stress_index: float
+    irrigation_demand_index: float
+    disease_risk_index: float
+    yield_trend: float
+    soil_fertility_index: float
+    explanation: str
+    created_at: Any
+
+    class Config:
+        from_attributes = True
+
+
 class FarmOut(BaseModel):
     id: int
     name: str
@@ -77,6 +112,8 @@ class FarmOut(BaseModel):
     sowing_date: date
     irrigation_method: str
     soil_reports: List[SoilReportOut] = []
+    satellite_observations: List[SatelliteObservationOut] = []
+    earth_forecasts: List[EarthIntelligenceForecastOut] = []
 
     class Config:
         from_attributes = True
@@ -248,3 +285,40 @@ def get_soil_history(
         .order_by(SoilReport.test_date.desc())
         .all()
     )
+
+
+@router.get("/{farm_id}/satellite-history", response_model=List[SatelliteObservationOut])
+def get_satellite_history(
+    farm_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """Fetch all Sentinel satellite index observation readings for the farm field."""
+    # Verify owner
+    farm = db.query(Farm).filter(Farm.id == farm_id, Farm.user_id == current_user.id).first()
+    if not farm:
+        raise HTTPException(status_code=404, detail="Farm field not found or unauthorized")
+
+    return (
+        db.query(SatelliteObservation)
+        .filter(SatelliteObservation.farm_id == farm_id)
+        .order_by(SatelliteObservation.observation_date.desc())
+        .all()
+    )
+
+
+@router.get("/{farm_id}/earth-forecasts", response_model=List[EarthIntelligenceForecastOut])
+def get_earth_forecasts(
+    farm_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """Triggers downscaled telemetry ingestion, runs LightGBM forecasting, and yields explainable forecasts."""
+    # Verify owner
+    farm = db.query(Farm).filter(Farm.id == farm_id, Farm.user_id == current_user.id).first()
+    if not farm:
+        raise HTTPException(status_code=404, detail="Farm field not found or unauthorized")
+
+    # This triggers the automatic downscale weather ingestion + seeds initial metrics + returns weekly/monthly/seasonal forecasts
+    return calculate_explainable_forecasts(db, farm_id)
+
