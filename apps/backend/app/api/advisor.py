@@ -2,12 +2,13 @@ import uuid
 from typing import Any, List, Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, status, Response
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session  # refreshed cache
 
 from app.api import deps
 from app.db.database import get_db
 from app.models.user import User
 from app.models.chat import ChatMessage, ChatMessageFeedback
+from app.models.farm import Farm, SoilReport
 from app.models.scan import ScanLog
 from app.models.expense import Expense
 from app.models.calendar import CropCalendar
@@ -159,9 +160,44 @@ def post_chat_message(
         for a in activities
     ]
 
+    # Database resolved farm management & soil health records
+    farms = db.query(Farm).filter(Farm.user_id == current_user.id).order_by(Farm.created_at.desc()).all()
+    farms_list = []
+    for f in farms:
+        latest_soil = f.soil_reports[0] if f.soil_reports else None
+        latest_soil_dict = {
+            "ph": latest_soil.ph,
+            "nitrogen": latest_soil.nitrogen,
+            "phosphorus": latest_soil.phosphorus,
+            "potassium": latest_soil.potassium,
+            "organic_carbon": latest_soil.organic_carbon,
+            "soil_moisture": latest_soil.soil_moisture,
+            "electrical_conductivity": latest_soil.electrical_conductivity,
+            "temperature": latest_soil.temperature,
+            "humidity": latest_soil.humidity,
+            "soil_texture": latest_soil.soil_texture,
+            "test_date": latest_soil.test_date.strftime("%Y-%m-%d"),
+            "source": latest_soil.source
+        } if latest_soil else None
+
+        farms_list.append({
+            "name": f.name,
+            "size": f.area,
+            "area_unit": f.area_unit,
+            "state": f.state,
+            "district": f.district,
+            "village": f.village,
+            "gps_coordinates": f.gps_coordinates,
+            "crop": f.current_crop,
+            "sow_date": str(f.sow_date),
+            "irrigation_method": f.irrigation_method,
+            "soil_health": latest_soil_dict
+        })
+
     # Combine UI context with database resolved logs
     enriched_context = message_in.farmer_context or {}
     enriched_context.update({
+        "farms": farms_list,
         "scans": scans_list,
         "expenses": expenses_list,
         "calendars": calendars_list,

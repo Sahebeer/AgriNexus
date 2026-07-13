@@ -40,7 +40,7 @@ export default function RegisterPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { id, value } = e.target;
-    setFormData((prev) => ({ ...prev, [id]: value }));
+    setFormData((prev: typeof formData) => ({ ...prev, [id]: value }));
     if (validationError) setValidationError(null);
     clearError();
   };

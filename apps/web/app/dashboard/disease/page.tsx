@@ -32,6 +32,15 @@ interface DiagnosisResult {
   confidence: number;
   scan_log_id?: number;
   gradcam_overlay?: string | null;
+  status?: string;
+  iqa_reasons?: string[];
+  iqa_metrics?: {
+    blur_variance: number;
+    brightness_mean: number;
+    contrast_std: number;
+    leaf_coverage_pct: number;
+  };
+  top3_predictions?: Array<{ name: string; confidence: number }>;
 }
 
 export default function DiseaseDetectionPage() {

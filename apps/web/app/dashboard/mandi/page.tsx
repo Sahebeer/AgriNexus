@@ -187,7 +187,7 @@ export default function MandiMarketplacePage() {
       setNewPhone(user.phone_number);
     }
     if (user?.state) {
-      const matchedLoc = LOCATIONS.find(l => l.includes(user.state));
+      const matchedLoc = LOCATIONS.find(l => user.state && l.includes(user.state));
       if (matchedLoc) setNewLoc(matchedLoc);
     }
   }, [user]);

@@ -70,7 +70,7 @@ const CROPS = [
 const TYPE_CONFIG: Record<string, { icon: React.FC<any>; bg: string; text: string; border: string }> = {
   "Disease Scan":           { icon: ShieldAlert,  bg: "bg-red-500/10",    text: "text-red-400",    border: "border-red-500/20" },
   "AI Chat":                { icon: Bot,          bg: "bg-primary/10",    text: "text-primary",    border: "border-primary/20" },
-  "Fertilizer Application": { icon: FlaskConical, bg: "bg-amber-500/10",  bg: "bg-amber-500/10",  text: "text-amber-400",  border: "border-amber-500/20" },
+  "Fertilizer Application": { icon: FlaskConical, bg: "bg-amber-500/10",  text: "text-amber-400",  border: "border-amber-500/20" },
   "Irrigation":             { icon: Droplets,     bg: "bg-blue-500/10",   text: "text-blue-400",   border: "border-blue-500/20" },
   "Pesticide / Spray":      { icon: Bug,          bg: "bg-rose-500/10",   text: "text-rose-400",   border: "border-rose-500/20" },
   "Harvest":                { icon: Sprout,       bg: "bg-emerald-500/10",text: "text-emerald-400",border: "border-emerald-500/20" },
@@ -151,7 +151,7 @@ export default function TimelinePage() {
 
   const handleCreateActivity = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.strip()) {
+    if (!newTitle.trim()) {
       showToast("Please enter a title", "error");
       return;
     }

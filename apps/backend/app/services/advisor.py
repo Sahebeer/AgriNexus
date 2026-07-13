@@ -77,7 +77,7 @@ def generate_advisor_response(
     if profile_state:
         context_bulletpoints.append(f"- State Location: {profile_state}")
         
-    # Check if client supplied active farm field context from localStorage
+    # Check if client supplied active farm field context from database/localStorage
     if farmer_context and "farms" in farmer_context:
         farms_data = farmer_context["farms"]
         if isinstance(farms_data, list) and len(farms_data) > 0:
@@ -87,8 +87,19 @@ def generate_advisor_response(
                 size = f.get("size", "Unknown size")
                 soil = f.get("soil_type", "Unknown soil")
                 irrigation = f.get("irrigation_method", "Unknown irrigation")
-                field_descriptions.append(f"{name} ({size} hectares, soil: {soil}, water: {irrigation})")
-            context_bulletpoints.append(f"- Registered Farm Fields: {', '.join(field_descriptions)}")
+                crop = f.get("crop", "Unknown")
+                desc = f"{name} ({size} Ha, Crop: {crop}, soil texture: {soil}, water: {irrigation})"
+                
+                sh = f.get("soil_health")
+                if sh:
+                    desc += (
+                        f" [Soil Report: pH: {sh.get('ph')}, N: {sh.get('nitrogen')} mg/kg, "
+                        f"P: {sh.get('phosphorus')} mg/kg, K: {sh.get('potassium')} mg/kg, "
+                        f"Moisture: {sh.get('soil_moisture')}%, Carbon: {sh.get('organic_carbon')}%, "
+                        f"EC: {sh.get('electrical_conductivity')} dS/m, Temp: {sh.get('temperature')}°C]"
+                    )
+                field_descriptions.append(desc)
+            context_bulletpoints.append(f"- Registered Farm Fields: {'; '.join(field_descriptions)}")
             
     # Check if client supplied current location weather context
     if farmer_context and "weather" in farmer_context:

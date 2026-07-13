@@ -104,16 +104,23 @@ export default function CalendarPage() {
   const [history, setHistory] = useState<CalendarSummary[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
-  // Pre-fill from profile
+  // Pre-fill parameters from central database fields registry
   useEffect(() => {
-    if (user?.email) {
+    const prefillFromFarms = async () => {
       try {
-        const stored = localStorage.getItem(`agrinexus_farms_${user.email}`);
-        if (stored) {
-          const farms = JSON.parse(stored);
-          if (farms?.[0]?.crop) setCrop(farms[0].crop);
+        const res = await api.get("/api/v1/farms/");
+        if (res.data && res.data.length > 0) {
+          const f = res.data[0];
+          if (f.current_crop) setCrop(f.current_crop);
+          if (f.sowing_date) setSowDate(f.sowing_date);
+          if (f.state) setLocation(f.state);
         }
-      } catch { /* empty */ }
+      } catch (err) {
+        console.error("Failed to prefill calendar parameters from database:", err);
+      }
+    };
+    if (user) {
+      prefillFromFarms();
       if (user.state) setLocation(user.state);
     }
   }, [user]);

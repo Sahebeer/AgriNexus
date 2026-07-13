@@ -13,6 +13,7 @@ from app.api.calendar import router as calendar_router
 from app.api.activity import router as activity_router
 from app.api.expenses import router as expenses_router
 from app.api.mandi import router as mandi_router
+from app.api.farms import router as farms_router
 from app.db.database import engine, Base
 from app.models.chat import ChatMessage, ChatMessageFeedback # For schema bootstrapping
 from app.models.scan import ScanLog # For schema bootstrapping
@@ -21,6 +22,7 @@ from app.models.calendar import CropCalendar, CalendarEvent # For schema bootstr
 from app.models.activity import ActivityLog # For schema bootstrapping
 from app.models.expense import Expense # For schema bootstrapping
 from app.models.mandi import MandiListing # For schema bootstrapping
+from app.models.farm import Farm, SoilReport # For schema bootstrapping
 
 # Create database tables if they don't exist yet (automatic bootstrapping for dev)
 try:
@@ -56,6 +58,7 @@ app.include_router(calendar_router, prefix=f"{settings.API_V1_STR}/calendar", ta
 app.include_router(activity_router, prefix=f"{settings.API_V1_STR}/activity", tags=["activity"])
 app.include_router(expenses_router, prefix=f"{settings.API_V1_STR}/expenses", tags=["expenses"])
 app.include_router(mandi_router, prefix=f"{settings.API_V1_STR}/mandi", tags=["mandi"])
+app.include_router(farms_router, prefix=f"{settings.API_V1_STR}/farms", tags=["farms"])
 
 @app.get("/")
 def root_redirect():

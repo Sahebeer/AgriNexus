@@ -130,17 +130,25 @@ export default function ShoppingPage() {
 
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Pre-fill crop from profile
+  // Pre-fill parameters from central database fields registry
   useEffect(() => {
-    if (user?.email) {
+    const prefillFromFarms = async () => {
       try {
-        const stored = localStorage.getItem(`agrinexus_farms_${user.email}`);
-        if (stored) {
-          const farms = JSON.parse(stored);
-          if (farms?.[0]?.crop) setCrop(farms[0].crop);
-          if (farms?.[0]?.soil_type) setSoilType(farms[0].soil_type);
+        const res = await api.get("/api/v1/farms/");
+        if (res.data && res.data.length > 0) {
+          const f = res.data[0];
+          if (f.current_crop) setCrop(f.current_crop);
+          if (f.area) setFarmSize(f.area);
+          if (f.soil_reports?.[0]?.soil_texture) {
+            setSoilType(f.soil_reports[0].soil_texture);
+          }
         }
-      } catch { /* empty */ }
+      } catch (err) {
+        console.error("Failed to prefill shopping parameters from database:", err);
+      }
+    };
+    if (user) {
+      prefillFromFarms();
     }
   }, [user]);
 
