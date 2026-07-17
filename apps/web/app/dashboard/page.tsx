@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import api from "../../lib/api";
 import { useAuthStore } from "../../store/authStore";
 import { 
   Sprout, 
@@ -31,24 +32,41 @@ export default function DashboardPage() {
     router.push("/login");
   };
 
-  const [nodeCount, setNodeCount] = useState(0);
+  const [farmCount, setFarmCount] = useState<number>(0);
 
   useEffect(() => {
     if (!user?.email) return;
-    const key = `agrinexus_farms_${user.email}`;
-    const saved = localStorage.getItem(key);
-    if (saved) {
+
+    const fetchFarms = async () => {
       try {
-        const parsed = JSON.parse(saved);
-        setNodeCount(parsed.length);
-      } catch (e) {
-        setNodeCount(0);
+        const res = await api.get("/api/v1/farms/");
+        const farms = res.data || [];
+        setFarmCount(farms.length);
+        
+        // Sync with localStorage so that other components have the live list
+        localStorage.setItem(`agrinexus_farms_${user.email}`, JSON.stringify(farms));
+      } catch (error) {
+        console.error("Failed to fetch live farms count:", error);
+        
+        // Fallback to localStorage if offline or request fails
+        const key = `agrinexus_farms_${user.email}`;
+        const saved = localStorage.getItem(key);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            setFarmCount(parsed.length);
+          } catch (e) {
+            setFarmCount(0);
+          }
+        } else {
+          setFarmCount(0);
+        }
       }
-    } else {
-      const isRajesh = user.full_name?.toLowerCase().includes("rajesh") || user.email.toLowerCase().includes("rajesh");
-      setNodeCount(isRajesh ? 2 : 0);
-    }
+    };
+
+    fetchFarms();
   }, [user]);
+
 
   const dashboardCards = [
     {
@@ -193,9 +211,9 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-neutral-900/60 border border-neutral-850">
               <Activity className="h-5 w-5 text-primary" />
               <div>
-                <div className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold">Node Status</div>
+                <div className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold">Farms Connected</div>
                 <div className="text-xs font-bold text-neutral-200">
-                  {nodeCount} Connected {nodeCount === 1 ? "Node" : "Nodes"}
+                  {farmCount} Connected {farmCount === 1 ? "Farm" : "Farms"}
                 </div>
               </div>
             </div>

@@ -189,7 +189,7 @@ def post_chat_message(
             "village": f.village,
             "gps_coordinates": f.gps_coordinates,
             "crop": f.current_crop,
-            "sow_date": str(f.sow_date),
+            "sow_date": str(f.sowing_date) if f.sowing_date else None,
             "irrigation_method": f.irrigation_method,
             "soil_health": latest_soil_dict
         })
@@ -203,6 +203,26 @@ def post_chat_message(
         "calendars": calendars_list,
         "activities": activities_list
     })
+
+    # Fetch live weather context if not already provided by UI
+    if "weather" not in enriched_context:
+        try:
+            lat, lon = None, None
+            state = current_user.state or "Punjab"
+            # Try to resolve coordinates from the first farm
+            for f in farms:
+                if f.gps_coordinates:
+                    from app.services.satellite import parse_gps_coordinates
+                    flat, flon = parse_gps_coordinates(f.gps_coordinates)
+                    if flat is not None and flon is not None:
+                        lat, lon = flat, flon
+                        state = f.state or state
+                        break
+            from app.services.weather import get_state_weather
+            enriched_context["weather"] = get_state_weather(state, lat, lon)
+        except Exception:
+            pass
+
 
     # 4. Generate advisor answer using context
     ai_response_text = generate_advisor_response(

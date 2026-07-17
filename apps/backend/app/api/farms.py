@@ -147,6 +147,16 @@ def create_farm(
     Registers a new farm field in the database and seeds an initial
     healthy benchmark soil report.
     """
+    if payload.gps_coordinates:
+        from app.services.satellite import parse_gps_coordinates, check_gps_state_match
+        lat, lon = parse_gps_coordinates(payload.gps_coordinates)
+        if lat is not None and lon is not None:
+            if not check_gps_state_match(lat, lon, payload.state):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="GPS coordinates do not match the selected state region. Please verify coordinates."
+                )
+
     db_farm = Farm(
         user_id=current_user.id,
         name=payload.name,
@@ -163,24 +173,44 @@ def create_farm(
     db.add(db_farm)
     db.flush()  # get farm ID
 
-    # Seed an initial default soil report to prevent blank states
-    default_report = SoilReport(
-        farm_id=db_farm.id,
-        ph=6.5,
-        nitrogen=140.0,
-        phosphorus=32.0,
-        potassium=160.0,
-        organic_carbon=0.55,
-        soil_moisture=22.0,
-        electrical_conductivity=1.1,
-        temperature=24.0,
-        humidity=58.0,
-        soil_texture="Loamy",
-        test_date=date.today(),
-        source="manual",
-    )
-    db.add(default_report)
-    db.commit()
+    # Seed an initial default soil report to prevent blank states (DEMO users only)
+    from app.services.satellite import is_demo_user
+    if is_demo_user(current_user):
+        from app.services.weather import STATE_COORDINATES
+        normalized_state = db_farm.state.strip().title() if db_farm.state else "Punjab"
+        lat, lon = STATE_COORDINATES.get(normalized_state, (30.9012, 75.8568))
+        
+        # Calculate deterministic values based on state coordinates
+        seed_factor = abs(int(lat * 10000 + lon * 10000))
+        ph = round(6.0 + (seed_factor % 15) / 10.0, 1)
+        nitrogen = round(110.0 + (seed_factor % 50), 1)
+        phosphorus = round(20.0 + (seed_factor % 20), 1)
+        potassium = round(120.0 + (seed_factor % 100), 1)
+        organic_carbon = round(0.4 + (seed_factor % 4) / 10.0, 2)
+        soil_moisture = round(15.0 + (seed_factor % 15), 1)
+        temperature = round(20.0 + (seed_factor % 10), 1)
+        humidity = round(50.0 + (seed_factor % 30), 1)
+        texture = "Clayey" if (seed_factor % 3 == 0) else ("Sandy" if (seed_factor % 3 == 1) else "Loamy")
+
+        default_report = SoilReport(
+            farm_id=db_farm.id,
+            ph=ph,
+            nitrogen=nitrogen,
+            phosphorus=phosphorus,
+            potassium=potassium,
+            organic_carbon=organic_carbon,
+            soil_moisture=soil_moisture,
+            electrical_conductivity=round(0.8 + (seed_factor % 10) / 10.0, 1),
+            temperature=temperature,
+            humidity=humidity,
+            soil_texture=texture,
+            test_date=date.today(),
+            source="manual",
+        )
+        db.add(default_report)
+        db.commit()
+    else:
+        db.commit()
 
     # Log to timeline
     try:

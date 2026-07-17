@@ -1,12 +1,23 @@
 import logging
 from datetime import date, timedelta
 from sqlalchemy.orm import Session
+from app.models.user import User
 from app.models.farm import Farm, SoilReport
 from app.models.satellite import SatelliteObservation, EarthIntelligenceForecast
 from app.services.satellite import ingest_automated_farm_data
 
 logger = logging.getLogger(__name__)
 
+
+def is_demo_user(user: User) -> bool:
+    if not user:
+        return False
+    email_lower = user.email.lower()
+    return (
+        "sahebjot" in email_lower 
+        or "rajesh" in email_lower 
+        or email_lower.endswith(("@agri.com", "@farm.com"))
+    )
 
 def calculate_explainable_forecasts(db: Session, farm_id: int) -> list:
     """
@@ -18,14 +29,34 @@ def calculate_explainable_forecasts(db: Session, farm_id: int) -> list:
     if not farm:
         raise ValueError(f"Farm ID {farm_id} does not exist.")
 
+    user = db.query(User).filter(User.id == farm.user_id).first()
+    is_demo = is_demo_user(user)
+
+    # For non-demo accounts, if the farm has no GPS coordinates or no SoilReports, return empty
+    if not is_demo:
+        from app.services.satellite import parse_gps_coordinates
+        lat, lon = parse_gps_coordinates(farm.gps_coordinates)
+        if lat is None or lon is None:
+            logger.info(f"Returning empty forecasts for non-demo farm ID {farm_id} with missing GPS coordinates.")
+            return []
+            
+        soil_exists = db.query(SoilReport).filter(SoilReport.farm_id == farm_id).first()
+        if not soil_exists:
+            logger.info(f"Returning empty forecasts for non-demo farm ID {farm_id} with no soil health reports logged.")
+            return []
+
     # 1. Ensure latest satellite observations are ingested
     try:
         obs = ingest_automated_farm_data(db, farm_id)
+        if obs is None and not is_demo:
+            return []
     except Exception as e:
         logger.error(f"Failed to auto-ingest telemetry in EIE forecasting: {e}")
         # fallback observation creation
         obs = db.query(SatelliteObservation).filter(SatelliteObservation.farm_id == farm_id).first()
         if not obs:
+            if not is_demo:
+                return []
             obs = SatelliteObservation(ndvi=0.65, ndwi=0.45, observation_date=date.today())
 
     # 2. Get latest soil health indicators
@@ -36,7 +67,10 @@ def calculate_explainable_forecasts(db: Session, farm_id: int) -> list:
         .first()
     )
     if not soil:
-        # Emergency defaults
+        if not is_demo:
+            return []
+            
+        # Emergency defaults for demo accounts
         class DummySoil:
             ph = 6.5
             nitrogen = 130.0

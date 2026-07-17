@@ -26,6 +26,7 @@ class Farm(Base):
     district = Column(String, nullable=False)
     village = Column(String, nullable=False)
     gps_coordinates = Column(String, nullable=True) # e.g. "30.9012 N, 75.8568 E"
+    boundary_geojson = Column(Text, nullable=True) # GeoJSON polygon string
 
     current_crop = Column(String, nullable=False)
     sowing_date = Column(Date, nullable=False)

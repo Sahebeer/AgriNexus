@@ -23,51 +23,157 @@ except ImportError:
     logger.warning("PyTorch/Torchvision not available. Running high-precision local feature proxy.")
 
 # Database of crop disease details
+# Disease registry — ordered to EXACTLY match torchvision ImageFolder alphabetical class indexing:
+# [0] Pepper__bell___Bacterial_spot
+# [1] Pepper__bell___healthy
+# [2] Potato___Early_blight
+# [3] Potato___Late_blight
+# [4] Potato___healthy
+# [5] Tomato_Bacterial_spot
+# [6] Tomato_Early_blight
+# [7] Tomato_Late_blight
+# [8] Tomato_Leaf_Mold
+# [9] Tomato_Septoria_leaf_spot
+# [10] Tomato_Spider_mites_Two_spotted_spider_mite
+# [11] Tomato__Target_Spot
+# [12] Tomato__Tomato_YellowLeaf__Curl_Virus
+# [13] Tomato__Tomato_mosaic_virus
+# [14] Tomato_healthy
 DISEASE_REGISTRY = [
     {
-        "id": "tomato_late_blight",
-        "name": "Tomato Late Blight (Phytophthora infestans)",
-        "type": "Fungal/Oomycete Pathogen",
-        "severity": "High",
-        "description": "Late blight is a highly destructive disease that attacks tomato leaves, stems, and fruit. It thrives in cool, wet conditions, producing dark water-soaked spots on foliage which can collapse the plant within days.",
-        "treatment": "Apply copper-based fungicides immediately. Prune and destroy infected leaves to reduce spore count. Avoid moving through wet crops to prevent pathogen dispersion.",
-        "prevention": "Ensure wide spacing between plants for wind circulation. Avoid overhead sprinkler irrigation (use drip lines). Plant certified disease-resistant seed varieties."
+        "id": "pepper_bacterial_spot",
+        "name": "Bell Pepper Bacterial Spot (Xanthomonas campestris)",
+        "type": "Bacterial Infection",
+        "severity": "Medium",
+        "description": "Water-soaked, angular lesions on pepper leaves, which enlarge and turn brown with yellow halos. Severely infected leaves drop prematurely, reducing photosynthetic area.",
+        "treatment": "Apply copper-based bactericides at first symptom. Remove and destroy infected plant debris. Avoid overhead irrigation to reduce splash dispersal.",
+        "prevention": "Use certified disease-free seed. Rotate crops annually. Apply copper sprays preventatively during humid periods."
+    },
+    {
+        "id": "pepper_healthy",
+        "name": "Bell Pepper — Healthy Foliage",
+        "type": "Normal Health",
+        "severity": "None",
+        "description": "Leaf shows normal green coloration with no visible lesions, spots, or wilting. Plant appears vigorous.",
+        "treatment": "No treatment required. Maintain regular fertilization and irrigation schedules.",
+        "prevention": "Keep monitoring weekly. Ensure adequate potassium for cell wall strength."
     },
     {
         "id": "potato_early_blight",
         "name": "Potato Early Blight (Alternaria solani)",
         "type": "Fungal Infection",
         "severity": "Medium",
-        "description": "Early blight is caused by the fungus Alternaria solani. It manifests as circular, dark spots with concentric 'target-board' rings on older leaves first. Can limit tuber size and harvest yields.",
-        "treatment": "Apply organic copper sprays or mancozeb-based fungicides. Remove lower leaves that show early infection to prevent upward splash dispersion.",
-        "prevention": "Practice 3-year crop rotation (avoid planting solanaceous crops consecutively). Maintain balanced soil nitrogen levels to keep plants robust."
+        "description": "Early blight manifests as dark brown circular spots with concentric target-board rings on older leaves first. Can limit tuber size and reduce harvest yields significantly.",
+        "treatment": "Apply copper sprays or mancozeb-based fungicides. Remove and burn lower leaves showing early infection to prevent upward spore splash.",
+        "prevention": "Practice 3-year crop rotation. Maintain balanced nitrogen levels. Plant certified blight-tolerant varieties."
     },
     {
-        "id": "corn_common_rust",
-        "name": "Corn Common Rust (Puccinia sorghi)",
-        "type": "Fungal Rust",
-        "severity": "Medium",
-        "description": "Common rust is characterized by golden-brown, powdery pustules appearing on both upper and lower leaf surfaces. Cool temperatures and high relative humidity favor its development.",
-        "treatment": "Typically, chemical treatment is not economically justified unless rust appears early on young corn. In severe cases, apply strobulin or triazole fungicides.",
-        "prevention": "Plant resistant hybrid seed varieties. Till crop residue into the soil post-harvest to speed up decomposition of overwintering spores."
-    },
-    {
-        "id": "apple_black_rot",
-        "name": "Apple Black Rot (Botryosphaeria obtusa)",
-        "type": "Fungal Pathogen",
+        "id": "potato_late_blight",
+        "name": "Potato Late Blight (Phytophthora infestans)",
+        "type": "Fungal/Oomycete Pathogen",
         "severity": "High",
-        "description": "Black rot can infect leaves (causing 'frogeye' spots), bark (causing wood cankers), and fruit (causing decay and mummification). It can weaken limbs and ruin commercial apple quality.",
-        "treatment": "Prune out dead branches and cankers during winter dormancy. Apply protective fungicides like captan, thiophanate-methyl, or sulfur-based mixtures during spring bud breaks.",
-        "prevention": "Remove all mummified apples and fallen leaf litter from the orchard floor. Burn or bury infected wood far away from active orchards."
+        "description": "Late blight produces dark water-soaked lesions with white sporulation on the undersides of leaves in humid conditions. Can devastate an entire field within days in cool, wet weather.",
+        "treatment": "Apply systemic fungicides (metalaxyl, cymoxanil) immediately. Destroy infected tubers. Avoid moving through the crop when wet.",
+        "prevention": "Plant resistant cultivars. Apply preventative fungicide sprays before periods of rain. Use drip irrigation instead of overhead sprinklers."
     },
     {
-        "id": "healthy_leaf",
-        "name": "Healthy Foliage - No Pathogens Detected",
+        "id": "potato_healthy",
+        "name": "Potato — Healthy Foliage",
         "type": "Normal Health",
         "severity": "None",
-        "description": "The leaf shows standard chlorophyll distribution, optimal cellular turgor, and no visual indications of necrotic lesions, mycelial growth, or chlorotic spots.",
-        "treatment": "No disease treatments required. Continue applying standard micro-nutrients and monitoring moisture levels.",
-        "prevention": "Maintain biosecurity protocols. Keep pruning shears clean by wiping with 70% isopropyl alcohol before moving between crop beds."
+        "description": "Leaves show vibrant green coloration with no lesions, spots, or necrosis.",
+        "treatment": "No treatment required. Continue standard field management.",
+        "prevention": "Monitor weekly for early blight or aphid infestations."
+    },
+    {
+        "id": "tomato_bacterial_spot",
+        "name": "Tomato Bacterial Spot (Xanthomonas vesicatoria)",
+        "type": "Bacterial Infection",
+        "severity": "Medium",
+        "description": "Small, water-soaked spots that enlarge and turn dark brown to black with yellow halos. Spots may coalesce, causing large areas of dead leaf tissue and defoliation.",
+        "treatment": "Apply copper hydroxide sprays. Remove severely affected leaves. Avoid working in wet fields to prevent spreading.",
+        "prevention": "Use pathogen-free seed. Apply copper sprays preventatively. Avoid overhead irrigation."
+    },
+    {
+        "id": "tomato_early_blight",
+        "name": "Tomato Early Blight (Alternaria solani)",
+        "type": "Fungal Infection",
+        "severity": "Medium",
+        "description": "Circular to angular dark brown spots with concentric rings (target-board pattern). Begins on older lower leaves and progresses upward. Can cause significant defoliation.",
+        "treatment": "Apply chlorothalonil or mancozeb fungicides. Prune lower infected foliage. Maintain consistent irrigation to avoid drought stress.",
+        "prevention": "Mulch soil to reduce spore splash. Stake plants for better airflow. Rotate crops every 2-3 seasons."
+    },
+    {
+        "id": "tomato_late_blight",
+        "name": "Tomato Late Blight (Phytophthora infestans)",
+        "type": "Fungal/Oomycete Pathogen",
+        "severity": "High",
+        "description": "Large, dark, water-soaked lesions with white sporulation on leaf undersides. Causes rapid collapse of foliage and can destroy fruit. Thrives in cool, moist conditions.",
+        "treatment": "Apply copper-based or systemic fungicides immediately. Destroy all infected plant material. Cease overhead irrigation.",
+        "prevention": "Plant resistant varieties. Apply preventive fungicide before wet seasons. Ensure good air circulation by proper plant spacing."
+    },
+    {
+        "id": "tomato_leaf_mold",
+        "name": "Tomato Leaf Mold (Passalora fulva)",
+        "type": "Fungal Infection",
+        "severity": "Medium",
+        "description": "Pale greenish-yellow spots on upper leaf surfaces with olive-green to grayish-brown velvety fungal growth on undersides. Thrives in warm, humid greenhouse conditions.",
+        "treatment": "Improve ventilation to reduce humidity. Apply mancozeb or chlorothalonil fungicides. Remove and destroy heavily infected leaves.",
+        "prevention": "Maintain humidity below 85%. Use resistant cultivars. Ensure adequate plant spacing for airflow."
+    },
+    {
+        "id": "tomato_septoria_leaf_spot",
+        "name": "Tomato Septoria Leaf Spot (Septoria lycopersici)",
+        "type": "Fungal Infection",
+        "severity": "Medium",
+        "description": "Numerous small, circular spots with dark brown margins and lighter gray centers, each containing tiny black fruiting bodies. Causes severe defoliation when conditions are moist.",
+        "treatment": "Apply copper fungicides or chlorothalonil sprays. Remove and compost infected leaves away from the crop. Avoid overhead watering.",
+        "prevention": "Mulch soil to prevent spore splash. Stake plants to improve airflow. Rotate crops with non-solanaceous plants."
+    },
+    {
+        "id": "tomato_spider_mites",
+        "name": "Tomato Spider Mites (Tetranychus urticae)",
+        "type": "Arachnid Pest Infestation",
+        "severity": "Medium",
+        "description": "Leaves show stippling (tiny yellow-white dots) and bronzing. Fine webbing visible on leaf undersides under a magnifying glass. Severe infestations cause leaf drop.",
+        "treatment": "Apply miticide sprays (abamectin, bifenazate). Use strong water jets to dislodge mites. Introduce predatory mites (Phytoseiulus persimilis) for biological control.",
+        "prevention": "Avoid excessive nitrogen fertilization. Maintain adequate irrigation to prevent plant stress. Monitor field edges regularly."
+    },
+    {
+        "id": "tomato_target_spot",
+        "name": "Tomato Target Spot (Corynespora cassiicola)",
+        "type": "Fungal Infection",
+        "severity": "Medium",
+        "description": "Brown lesions with concentric rings giving a target-board appearance on leaves, stems, and fruit. Causes premature defoliation, weakening the plant and reducing yield.",
+        "treatment": "Apply fungicides (azoxystrobin, difenoconazole). Improve airflow by pruning. Remove infected plant material from the field.",
+        "prevention": "Avoid overcrowding plants. Use drip irrigation. Rotate crops to reduce pathogen carryover in soil."
+    },
+    {
+        "id": "tomato_yellow_leaf_curl",
+        "name": "Tomato Yellow Leaf Curl Virus (TYLCV)",
+        "type": "Viral Disease (Begomovirus)",
+        "severity": "High",
+        "description": "Leaves curl upward and inward, turn yellow, and become small and crinkled. Plants are stunted and produce little to no marketable fruit. Transmitted by whiteflies.",
+        "treatment": "No cure exists for TYLCV. Remove and destroy infected plants immediately to prevent spread. Apply insecticides to control whitefly vectors.",
+        "prevention": "Plant resistant varieties. Use reflective mulch to deter whiteflies. Control whitefly populations with yellow sticky traps and neonicotinoid sprays early in the season."
+    },
+    {
+        "id": "tomato_mosaic_virus",
+        "name": "Tomato Mosaic Virus (ToMV)",
+        "type": "Viral Disease",
+        "severity": "High",
+        "description": "Leaves develop a mosaic pattern of light and dark green areas, often with distortion and puckering. Fruit may be deformed or show internal browning. Spreads via contact.",
+        "treatment": "No chemical cure. Remove and bag infected plants. Disinfect all tools with bleach solution. Wash hands thoroughly when moving between plants.",
+        "prevention": "Plant certified virus-free seed or resistant varieties. Control aphid populations. Avoid tobacco use near tomato plants (cross-infection risk)."
+    },
+    {
+        "id": "tomato_healthy",
+        "name": "Tomato — Healthy Foliage",
+        "type": "Normal Health",
+        "severity": "None",
+        "description": "The leaf shows standard deep-green coloration with no lesions, spots, discoloration, or deformities. The plant is in good health.",
+        "treatment": "No disease treatments required. Continue standard nutrient and irrigation schedules.",
+        "prevention": "Maintain biosecurity protocols. Scout weekly for early signs of blight, viral symptoms, or mite infestations."
     }
 ]
 
@@ -83,7 +189,11 @@ def forward_hook_fn(module, input, output):
 
 def backward_hook_fn(module, grad_in, grad_out):
     global target_gradients
-    target_gradients = grad_out[0].detach()
+    # grad_out is a tuple; grab the first non-None gradient tensor
+    for g in grad_out:
+        if g is not None:
+            target_gradients = g.detach()
+            return
 
 
 # Model paths and loaders
@@ -97,8 +207,12 @@ if TORCH_AVAILABLE:
     try:
         weights = EfficientNet_B0_Weights.DEFAULT
         model_instance = efficientnet_b0(weights=weights)
-        model_instance.classifier[1] = nn.Linear(1280, len(DISEASE_REGISTRY))
-        
+        # Replace head to match 15-class PlantVillage taxonomy
+        model_instance.classifier = nn.Sequential(
+            nn.Dropout(p=0.4, inplace=True),
+            nn.Linear(1280, len(DISEASE_REGISTRY))
+        )
+
         # Load custom weights if available in services directory
         if WEIGHTS_PATH.exists():
             model_instance.load_state_dict(torch.load(WEIGHTS_PATH, map_location=device))
@@ -109,7 +223,8 @@ if TORCH_AVAILABLE:
             
         target_layer = model_instance.features[8]
         target_layer.register_forward_hook(forward_hook_fn)
-        target_layer.register_backward_hook(backward_hook_fn)
+        # Use register_full_backward_hook (PyTorch ≥1.8, deprecates register_backward_hook)
+        target_layer.register_full_backward_hook(backward_hook_fn)
         
         model_instance.to(device)
         model_instance.eval()
@@ -300,9 +415,12 @@ def classify_leaf_image(image_bytes: bytes) -> dict:
                     base64_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
                     gradcam_b64 = f"data:image/jpeg;base64,{base64_str}"
                 
-                # Apply Calibrated Three-Tier thresholds:
-                # 1. High Confidence (>= 0.65)
-                if confidence >= 0.65:
+                # ── Calibrated Three-Tier thresholds for 15-class model ──────────────────
+                # With 15 classes, random baseline = 6.7%. Scale thresholds accordingly:
+                # 1. High Confidence (>= 0.50)  → definitive diagnosis
+                # 2. Uncertain       (>= 0.22)  → probable match, verify visually
+                # 3. Inconclusive    (<  0.22)  → model could not decide; show best guess
+                if confidence >= 0.50:
                     disease_info = DISEASE_REGISTRY[idx]
                     return {
                         "status": "Success",
@@ -318,8 +436,7 @@ def classify_leaf_image(image_bytes: bytes) -> dict:
                         "top3_predictions": top3_predictions,
                         "iqa_metrics": iqa["metrics"]
                     }
-                # 2. Moderate/Low Confidence (0.35 to 0.65)
-                elif confidence >= 0.35:
+                elif confidence >= 0.22:
                     disease_info = DISEASE_REGISTRY[idx]
                     return {
                         "status": "Uncertain",
@@ -335,19 +452,20 @@ def classify_leaf_image(image_bytes: bytes) -> dict:
                         "top3_predictions": top3_predictions,
                         "iqa_metrics": iqa["metrics"]
                     }
-                # 3. Fully Inconclusive (< 0.35)
                 else:
+                    # Still return best guess with heatmap instead of blank Inconclusive
+                    disease_info = DISEASE_REGISTRY[idx]
                     return {
                         "status": "Inconclusive",
-                        "disease_id": "inconclusive",
-                        "name": "Unresolved Symptoms - Inconclusive Scan",
-                        "type": "Unresolved Diagnostics",
-                        "severity": "None",
-                        "description": "Our neural network model could not establish a meaningful prediction from this leaf pattern.",
-                        "treatment": "Please try scanning another leaf showing clearer symptom spots or consult your local agronomy extension center.",
-                        "prevention": "Ensure there are no dirt splatters or physical tears on the scanned leaf.",
+                        "disease_id": disease_info["id"],
+                        "name": f"Low Confidence: {disease_info['name']}",
+                        "type": disease_info["type"],
+                        "severity": disease_info["severity"],
+                        "description": f"The model's top guess is {disease_info['name']} ({int(confidence*100)}% confidence) but this is below the reliable detection threshold. Review all top predictions carefully.",
+                        "treatment": disease_info["treatment"],
+                        "prevention": disease_info["prevention"],
                         "confidence": confidence,
-                        "gradcam_overlay": None,
+                        "gradcam_overlay": gradcam_b64,
                         "top3_predictions": top3_predictions,
                         "iqa_metrics": iqa["metrics"]
                     }
