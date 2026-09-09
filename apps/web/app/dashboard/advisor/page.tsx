@@ -19,7 +19,11 @@ import {
   RefreshCw,
   HelpCircle,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  CloudSun,
+  Coins,
+  Sprout,
+  Compass
 } from "lucide-react";
 
 interface Message {
@@ -71,82 +75,82 @@ export default function AdvisorChatPage() {
     }
   }, [user]);
 
-  const handleFeedback = async (messageId: number, isPositive: boolean) => {
-    try {
-      await api.post(`/api/v1/advisor/feedback/${messageId}`, {
-        thumbs_up: isPositive,
-        thumbs_down: !isPositive
-      });
-      showToast("Thank you for your feedback!", "success");
-    } catch (err) {
-      console.error("Failed to log message feedback:", err);
-      showToast("Could not submit feedback.", "error");
-    }
-  };
-
-  // Suggested prompt pills
-  const promptPills = [
-    { text: "SAR Radar Telemetry", query: "How to make use of the Sentinel-1 SAR intelligence?" },
-    { text: "Why are leaves yellow?", query: "Why are my crop leaves turning yellow?" },
-    { text: "Correct acid soil pH", query: "How do I correct acid soil pH?" },
-    { text: "Best tomato fertilizers", query: "What fertilizer is best for tomatoes?" },
-    { text: "Control late blight", query: "How can I control late blight?" },
-    { text: "Drip irrigation benefits", query: "How does drip irrigation save water and prevent disease?" }
-  ];
-
-  // Load chat threads list
+  // Load chat session list
   const loadSessions = async () => {
     try {
       const res = await api.get("/api/v1/advisor/sessions");
-      setSessions(res.data);
+      setSessions(res.data || []);
     } catch (err) {
       console.error("Failed to load sessions:", err);
     }
   };
 
   useEffect(() => {
-    loadSessions();
-  }, []);
+    if (user) {
+      loadSessions();
+    }
+  }, [user]);
 
-  // Fetch history for selected session
+  // Load messages when active session changes
   useEffect(() => {
     if (!activeSessionId) {
       setMessages([]);
       return;
     }
-    
-    const loadSessionMessages = async () => {
+
+    const loadHistory = async () => {
       setIsLoadingHistory(true);
       try {
         const res = await api.get(`/api/v1/advisor/sessions/${activeSessionId}`);
-        setMessages(res.data);
+        setMessages(res.data.messages || []);
       } catch (err) {
-        console.error("Failed to load message history:", err);
+        console.error("Failed to fetch messages for session:", err);
+        showToast("Error retrieving chat history.", "error");
       } finally {
         setIsLoadingHistory(false);
       }
     };
 
-    loadSessionMessages();
+    loadHistory();
   }, [activeSessionId]);
 
-  // Scroll to bottom when messages update
+  // Scroll to bottom on message change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isGenerating]);
 
-  // Handle message send
-  const handleSendMessage = async (textToSend: string) => {
-    if (!textToSend.trim()) return;
-    
-    const userText = textToSend;
+  // Predefined prompts tailored for agricultural cycles
+  const promptPills = [
+    { text: "Optimal wheat top-dressing schedule", query: "What is the optimal urea and zinc top-dressing timing for wheat during the tillering stage?" },
+    { text: "Drip irrigation water budget for tomatoes", query: "Calculate the weekly drip irrigation requirement per hectare for tomatoes in 32°C weather." },
+    { text: "Organic management for fall armyworm", query: "What organic IPM methods and bio-pesticides work best for maize fall armyworm control?" },
+    { text: "Correcting acidic soil pH (5.8 to 6.5)", query: "How much agricultural lime or dolomite is needed to raise soil pH from 5.8 to 6.5 in sandy loam?" },
+  ];
+
+  // Send feedback on message
+  const handleFeedback = async (msgId: number, isPositive: boolean) => {
+    try {
+      await api.post(`/api/v1/advisor/messages/${msgId}/feedback`, {
+        is_positive: isPositive
+      });
+      showToast("Thank you for your agronomic feedback!", "success");
+    } catch (err) {
+      console.error("Feedback error:", err);
+    }
+  };
+
+  // Dispatch message
+  const handleSendMessage = async (textToSend?: string) => {
+    const userText = textToSend || inputMessage;
+    if (!userText.trim() || isGenerating) return;
+
     setInputMessage("");
     setIsGenerating(true);
 
-    // Optimistically push user message to local feed
+    // Optimistically append user message
     const tempUserMsg: Message = {
       id: Date.now(),
-      session_id: activeSessionId || "",
+      session_id: activeSessionId || "temp",
       sender: "user",
       content: userText
     };
@@ -174,7 +178,6 @@ export default function AdvisorChatPage() {
         }
       });
 
-      // Update active session ID and reload threads
       const aiResponse = res.data;
       if (!activeSessionId) {
         setActiveSessionId(aiResponse.session_id);
@@ -182,20 +185,18 @@ export default function AdvisorChatPage() {
       }
 
       setMessages((prev) => {
-        // Replace temp items with database resolved payload
         const filtered = prev.filter(m => m.id !== tempUserMsg.id);
         return [...filtered, tempUserMsg, aiResponse];
       });
     } catch (err) {
       console.error("Failed to send message:", err);
-      // Push error indicator message
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 1,
           session_id: activeSessionId || "",
           sender: "assistant",
-          content: "❌ Error: Failed to generate advisor response. Please verify server connection."
+          content: "Unable to generate advisor response. Please check your backend connection."
         }
       ]);
     } finally {
@@ -203,7 +204,6 @@ export default function AdvisorChatPage() {
     }
   };
 
-  // Delete chat thread
   const handleDeleteSession = async (e: React.MouseEvent, sid: string) => {
     e.stopPropagation();
     try {
@@ -218,145 +218,135 @@ export default function AdvisorChatPage() {
     }
   };
 
-  // Start new conversation
   const startNewChat = () => {
     setActiveSessionId(null);
     setMessages([]);
   };
 
-  // Format advisor markdown segments for visual clarity (custom simple parser)
   const renderMessageContent = (content: string) => {
     const lines = content.split("\n");
     return lines.map((line, index) => {
-      // Bold items
-      let cleanLine = line;
-      
-      // Blockquotes
       if (line.startsWith("> ")) {
         return (
-          <blockquote key={index} className="border-l-4 border-primary pl-3 my-2 text-neutral-400 italic text-sm">
+          <blockquote key={index} className="border-l-2 border-emerald-500 pl-3 my-2 text-slate-600 italic text-xs leading-relaxed">
             {line.substring(2)}
           </blockquote>
         );
       }
-      
-      // Headers
       if (line.startsWith("### ")) {
-        return <h4 key={index} className="text-base font-bold text-white mt-4 mb-2">{line.substring(4)}</h4>;
+        return <h4 key={index} className="text-sm font-bold text-slate-900 mt-3 mb-1.5">{line.substring(4)}</h4>;
       }
       if (line.startsWith("## ")) {
-        return <h3 key={index} className="text-lg font-bold text-white mt-4 mb-2">{line.substring(3)}</h3>;
+        return <h3 key={index} className="text-base font-bold text-emerald-800 mt-4 mb-2">{line.substring(3)}</h3>;
       }
       if (line.startsWith("# ")) {
-        return <h2 key={index} className="text-xl font-bold text-white mt-4 mb-2">{line.substring(2)}</h2>;
+        return <h2 key={index} className="text-lg font-extrabold text-slate-900 mt-4 mb-2">{line.substring(2)}</h2>;
       }
-
-      // Bullet points
-      if (line.startsWith("* ") || line.startsWith("- ")) {
+      if (line.startsWith("- ") || line.startsWith("* ")) {
         return (
-          <li key={index} className="ml-4 list-disc text-sm text-neutral-300 mb-1 leading-relaxed">
-            {parseInlineStyles(line.substring(2))}
-          </li>
+          <div key={index} className="flex items-start gap-2 text-xs leading-relaxed text-slate-700 my-1">
+            <span className="text-emerald-600 font-bold mt-0.5">•</span>
+            <span>{parseInlineStyles(line.substring(2))}</span>
+          </div>
         );
       }
-
-      // Ordered list
-      const olMatch = line.match(/^(\d+)\.\s(.*)/);
-      if (olMatch) {
-        return (
-          <li key={index} className="ml-4 list-decimal text-sm text-neutral-300 mb-1 leading-relaxed">
-            {parseInlineStyles(olMatch[2])}
-          </li>
-        );
+      if (line.trim() === "") {
+        return <div key={index} className="h-1.5" />;
       }
-
-      // Standard paragraphs
       return (
-        <p key={index} className="text-sm leading-relaxed text-neutral-300 mb-2">
-          {parseInlineStyles(cleanLine)}
+        <p key={index} className="text-xs leading-relaxed text-slate-700 mb-1.5">
+          {parseInlineStyles(line)}
         </p>
       );
     });
   };
 
   const parseInlineStyles = (text: string) => {
-    // Basic bold **text** parsing
     const parts = text.split(/\*\*(.*?)\*\*/g);
     return parts.map((part, i) => {
       if (i % 2 === 1) {
-        return <strong key={i} className="text-primary font-bold">{part}</strong>;
+        return <strong key={i} className="text-slate-900 font-bold">{part}</strong>;
       }
       return part;
     });
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-sans">
-      {/* Top Navigation */}
-      <header className="glass sticky top-0 z-40 border-b border-neutral-800">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+      {/* Top Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link 
               href="/dashboard" 
-              className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800/60 border border-transparent hover:border-neutral-800 transition-all"
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all"
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
-            <h1 className="text-lg font-bold text-white flex items-center gap-2">
-              <Bot className="h-5 w-5 text-primary" />
-              AI Crop Advisor
-            </h1>
+            <div>
+              <h1 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Bot className="h-5 w-5 text-emerald-600" />
+                Agronomy Advisor
+              </h1>
+              <p className="text-xs text-slate-500">
+                Precision soil, weather, and crop management recommendations
+              </p>
+            </div>
           </div>
 
           <button 
             onClick={startNewChat}
-            className="md:hidden bg-primary/10 border border-primary/20 text-primary p-2 rounded-xl text-xs font-semibold flex items-center gap-1"
+            className="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
           >
-            <Plus className="h-4 w-4" />
-            New Chat
+            <Plus className="h-3.5 w-3.5" />
+            <span>New Consultation</span>
           </button>
         </div>
       </header>
 
-      {/* Main layout */}
+      {/* Main Layout Container */}
       <div className="flex-1 max-w-7xl mx-auto w-full flex items-stretch overflow-hidden min-h-[calc(100vh-4rem)]">
-        {/* Sidebar chats threads */}
-        <aside className="hidden md:flex w-72 border-r border-neutral-850 flex-col bg-neutral-950/40 p-4 justify-between">
+        {/* Left Sidebar: Threads & Live Context */}
+        <aside className="hidden md:flex w-72 border-r border-slate-200 flex-col bg-white p-4 justify-between select-none">
           <div className="space-y-4">
             <button
               onClick={startNewChat}
-              className="w-full bg-primary/10 border border-primary/20 hover:border-primary/40 text-primary font-semibold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(0,200,117,0.05)]"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm"
             >
               <Plus className="h-4 w-4" />
-              Start New Thread
+              New Consultation
             </button>
 
-            <div className="space-y-1 overflow-y-auto max-h-[calc(100vh-14rem)]">
-              <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest px-3 mb-2">Saved Threads</div>
+            {/* Saved Threads */}
+            <div className="space-y-1 overflow-y-auto max-h-[calc(100vh-20rem)]">
+              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-2">
+                Past Consultations
+              </div>
               
               {sessions.length === 0 ? (
-                <div className="text-xs text-neutral-600 px-3 py-4 italic flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-neutral-700" />
-                  No threads saved yet.
+                <div className="text-xs text-slate-400 px-2 py-3 italic flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-slate-300" />
+                  No previous sessions.
                 </div>
               ) : (
                 sessions.map((s) => (
                   <button
                     key={s.session_id}
                     onClick={() => setActiveSessionId(s.session_id)}
-                    className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-all border text-left group ${
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all border text-left group ${
                       activeSessionId === s.session_id
-                        ? "bg-neutral-800/80 border-primary/20 text-white"
-                        : "border-transparent text-neutral-400 hover:text-neutral-200 hover:bg-neutral-850/40"
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-900 font-semibold shadow-sm"
+                        : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     }`}
                   >
                     <div className="flex items-center gap-2.5 truncate max-w-[80%]">
-                      <MessageSquare className={`h-4 w-4 flex-shrink-0 ${activeSessionId === s.session_id ? "text-primary" : "text-neutral-500"}`} />
-                      <span className="text-xs font-semibold truncate">{s.session_title}</span>
+                      <MessageSquare className={`h-3.5 w-3.5 flex-shrink-0 ${activeSessionId === s.session_id ? "text-emerald-600" : "text-slate-400"}`} />
+                      <span className="text-xs truncate">{s.session_title}</span>
                     </div>
                     <button 
                       onClick={(e) => handleDeleteSession(e, s.session_id)}
-                      className="opacity-0 group-hover:opacity-100 hover:text-red-400 p-1 rounded transition-all"
+                      className="opacity-0 group-hover:opacity-100 hover:text-rose-600 p-1 rounded transition-all text-slate-400"
+                      title="Delete thread"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -366,90 +356,100 @@ export default function AdvisorChatPage() {
             </div>
           </div>
 
-          <div className="border-t border-neutral-900 pt-4 text-[10px] text-neutral-600 flex items-center gap-1.5 justify-center">
-            <Activity className="h-3 w-3 text-neutral-500" />
-            Database Synced | Session Engine Active
+          {/* Live Farm Context Summary Box */}
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-left text-[11px]">
+            <div className="flex items-center justify-between text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+              <span>Active Field Context</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            </div>
+            <div className="space-y-1 text-slate-700">
+              <div className="flex items-center gap-1.5">
+                <CloudSun className="h-3.5 w-3.5 text-sky-600" />
+                <span className="truncate">{weatherData ? `${weatherData.temp || 28}°C • ${weatherData.condition || 'Fair'}` : 'Weather Synced'}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Sprout className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Soil Telemetry & Cropping History</span>
+              </div>
+            </div>
           </div>
         </aside>
 
-        {/* Chat window */}
-        <main className="flex-1 flex flex-col justify-between bg-neutral-950/20 relative">
-          
+        {/* Chat Area */}
+        <main className="flex-1 flex flex-col justify-between bg-slate-50/60 relative">
           {/* Scrollable messages panel */}
-          <div className="flex-1 overflow-y-auto px-6 py-8 space-y-6 max-h-[calc(100vh-11rem)]">
-            
+          <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-5 max-h-[calc(100vh-10rem)]">
             {messages.length === 0 && !isLoadingHistory ? (
               /* Welcome screen if empty chat */
-              <div className="max-w-2xl mx-auto text-center py-12 flex flex-col items-center justify-center min-h-[350px]">
-                <div className="bg-primary/10 border border-primary/20 p-4 rounded-3xl mb-6 text-primary animate-bounce">
-                  <Bot className="h-10 w-10" />
+              <div className="max-w-2xl mx-auto text-center py-8 flex flex-col items-center justify-center min-h-[350px]">
+                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-700 mb-4 shadow-sm">
+                  <Bot className="h-7 w-7" />
                 </div>
-                <h3 className="font-display text-2xl font-bold text-white mb-2">AgriNexus AI Assistant</h3>
-                <p className="text-neutral-400 text-sm max-w-md leading-relaxed mb-8">
-                  Get insights on crop selection, NPK balances, water scheduling, and soil correction guidelines.
+                <h3 className="text-xl font-bold text-slate-900 mb-1.5 tracking-tight">
+                  AgriNexus Agronomy Advisor
+                </h3>
+                <p className="text-slate-500 text-xs max-w-md leading-relaxed mb-6">
+                  Get personalized recommendations on fertilizer requirements, irrigation scheduling, weed management, and crop health.
                 </p>
 
-                {/* Predefined prompt buttons */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                {/* Predefined prompt pills */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl">
                   {promptPills.map((pill, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleSendMessage(pill.query)}
-                      className="glass glass-hover p-4 rounded-xl border border-neutral-800 text-left text-xs font-semibold text-neutral-300 transition-all flex items-center justify-between group"
+                      className="p-3.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-left text-xs font-semibold text-slate-800 transition-all flex items-center justify-between group shadow-sm"
                     >
-                      <span>{pill.text}</span>
-                      <ArrowRight className="h-3.5 w-3.5 text-neutral-500 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                      <span className="leading-snug">{pill.text}</span>
+                      <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-emerald-700 group-hover:translate-x-0.5 transition-all flex-shrink-0 ml-2" />
                     </button>
                   ))}
                 </div>
               </div>
             ) : isLoadingHistory ? (
-              /* Loading Indicator */
-              <div className="flex flex-col items-center justify-center py-20 text-neutral-500 gap-3">
-                <RefreshCw className="h-6 w-6 text-primary animate-spin" />
-                <span className="text-xs font-semibold">Retrieving thread logs...</span>
+              <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
+                <RefreshCw className="h-5 w-5 text-emerald-600 animate-spin" />
+                <span className="text-xs font-semibold">Loading consultation history...</span>
               </div>
             ) : (
-              /* Conversation Messages list */
-              <div className="max-w-3xl mx-auto space-y-6">
+              /* Messages list */
+              <div className="max-w-3xl mx-auto space-y-4">
                 {messages.map((msg) => {
                   const isUser = msg.sender === "user";
                   return (
                     <div 
                       key={msg.id}
-                      className={`flex gap-4 items-start ${isUser ? "justify-end" : "justify-start"}`}
+                      className={`flex gap-3 items-start ${isUser ? "justify-end" : "justify-start"}`}
                     >
-                      {/* Avatar */}
                       {!isUser && (
-                        <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary flex-shrink-0">
+                        <div className="h-7 w-7 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 flex-shrink-0 mt-1 shadow-sm">
                           <Bot className="h-4 w-4" />
                         </div>
                       )}
                       
-                      {/* Message Bubble */}
-                      <div className={`p-4 rounded-2xl max-w-[85%] border shadow-sm relative ${
+                      <div className={`p-4 rounded-2xl max-w-[85%] text-left shadow-sm ${
                         isUser 
-                          ? "bg-primary border-primary text-neutral-950 font-medium rounded-tr-none" 
-                          : "glass border-neutral-800 text-neutral-100 rounded-tl-none"
+                          ? "bg-emerald-600 text-white rounded-tr-none" 
+                          : "bg-white border border-slate-200 text-slate-800 rounded-tl-none"
                       }`}>
                         {isUser ? (
-                          <p className="text-sm leading-relaxed">{msg.content}</p>
+                          <p className="text-xs font-medium leading-relaxed">{msg.content}</p>
                         ) : (
                           <div>
                             {renderMessageContent(msg.content)}
-                            <div className="flex gap-2 items-center mt-3 pt-2 border-t border-neutral-800/40 text-[10px] text-neutral-400">
-                              <span>Was this helpful?</span>
+                            <div className="flex gap-2 items-center mt-3 pt-2.5 border-t border-slate-100 text-[10px] text-slate-400">
+                              <span>Was this guidance helpful?</span>
                               <button 
                                 onClick={() => handleFeedback(msg.id, true)} 
-                                className="p-1 rounded hover:bg-neutral-800 hover:text-primary transition-colors"
+                                className="p-1 rounded hover:bg-slate-100 hover:text-emerald-700 transition-colors"
                                 title="Helpful"
                               >
                                 <ThumbsUp className="h-3 w-3" />
                               </button>
                               <button 
                                 onClick={() => handleFeedback(msg.id, false)} 
-                                className="p-1 rounded hover:bg-neutral-800 hover:text-red-400 transition-colors"
-                                title="Not helpful"
+                                className="p-1 rounded hover:bg-slate-100 hover:text-rose-600 transition-colors"
+                                title="Needs Improvement"
                               >
                                 <ThumbsDown className="h-3 w-3" />
                               </button>
@@ -457,63 +457,55 @@ export default function AdvisorChatPage() {
                           </div>
                         )}
                       </div>
-
-                      {isUser && (
-                        <div className="h-8 w-8 rounded-lg bg-neutral-850 border border-neutral-800 flex items-center justify-center text-neutral-300 flex-shrink-0">
-                          <User className="h-4 w-4" />
-                        </div>
-                      )}
                     </div>
                   );
                 })}
 
                 {isGenerating && (
-                  /* Typings / Thinking Indicator */
-                  <div className="flex gap-4 items-start justify-start">
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary flex-shrink-0 animate-pulse">
+                  <div className="flex gap-3 items-start justify-start animate-in fade-in">
+                    <div className="h-7 w-7 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 flex-shrink-0 mt-1 shadow-sm">
                       <Bot className="h-4 w-4" />
                     </div>
-                    <div className="glass border border-neutral-800 rounded-2xl rounded-tl-none p-4 flex items-center gap-2">
-                      <span className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
-                      <span className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
-                      <span className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
+                    <div className="p-3.5 rounded-2xl bg-white border border-slate-200 text-slate-600 text-xs flex items-center gap-2 shadow-sm">
+                      <RefreshCw className="h-3.5 w-3.5 text-emerald-600 animate-spin" />
+                      <span>Reviewing agronomic guidelines and live field context...</span>
                     </div>
                   </div>
                 )}
-                
                 <div ref={messagesEndRef} />
               </div>
             )}
           </div>
 
-          {/* Bottom input area */}
-          <div className="glass border-t border-neutral-850 p-4">
-            <form 
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendMessage(inputMessage);
-              }}
-              className="max-w-3xl mx-auto flex items-center gap-3 relative"
-            >
+          {/* Bottom Chat Input Bar */}
+          <div className="p-4 border-t border-slate-200 bg-white">
+            <div className="max-w-3xl mx-auto relative flex items-center">
               <input
                 type="text"
+                placeholder="Ask about fertilizer doses, soil correction, water requirements..."
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="Ask AgriNexus AI (e.g. soil correction, NPK, irrigation...)"
-                className="w-full bg-neutral-900/60 border border-neutral-800 hover:border-neutral-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl py-3 pl-4 pr-12 text-sm text-white placeholder-neutral-500 outline-none transition-all duration-300"
-                disabled={isGenerating || isLoadingHistory}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                disabled={isGenerating}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-12 py-3 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-600 shadow-sm font-medium"
               />
-              
               <button
-                type="submit"
-                className="absolute right-2.5 top-1/2 transform -translate-y-1/2 bg-primary hover:bg-primary-600 text-neutral-950 p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_10px_rgba(0,200,117,0.15)]"
-                disabled={isGenerating || isLoadingHistory || !inputMessage.trim()}
+                onClick={() => handleSendMessage()}
+                disabled={!inputMessage.trim() || isGenerating}
+                className="absolute right-2 p-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-all disabled:opacity-40 shadow-sm"
               >
-                <Send className="h-4 w-4" />
+                <Send className="h-3.5 w-3.5" />
               </button>
-            </form>
+            </div>
+            <p className="text-[10px] text-slate-400 text-center mt-2">
+              AgriNexus provides agricultural recommendations. Consult local extension services for high-risk chemical treatments.
+            </p>
           </div>
-
         </main>
       </div>
     </div>

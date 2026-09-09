@@ -22,8 +22,6 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 interface Expense {
   id: number;
   category: string;
@@ -56,8 +54,6 @@ interface OptimizationReport {
   profitability_forecast: ProfitabilityForecast;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const EXPENSE_CATEGORIES = [
   "Seeds",
   "Fertilizers",
@@ -80,10 +76,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Irrigation": "bg-sky-500",
   "Machinery": "bg-purple-500",
   "Transport": "bg-indigo-500",
-  "Miscellaneous": "bg-stone-500",
+  "Miscellaneous": "bg-slate-500",
 };
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ExpensesPage() {
   const router = useRouter();
@@ -101,31 +95,11 @@ export default function ExpensesPage() {
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [expenseDate, setExpenseDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [crop, setCrop] = useState("");
-  const [notes, setNotes] = useState("");
+  const [crop, setCrop] = useState("Wheat");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Profile Context
-  const [profileCrop, setProfileCrop] = useState("General Crop");
-  const [profileSize, setProfileSize] = useState(1.5);
-
-  useEffect(() => {
-    if (user?.email) {
-      try {
-        const stored = localStorage.getItem(`agrinexus_farms_${user.email}`);
-        if (stored) {
-          const farms = JSON.parse(stored);
-          if (farms?.[0]?.crop) {
-            setProfileCrop(farms[0].crop);
-            setCrop(farms[0].crop);
-          }
-          if (farms?.[0]?.size) {
-            setProfileSize(farms[0].size);
-          }
-        }
-      } catch { /* empty */ }
-    }
-  }, [user]);
+  // Field size context
+  const [profileSize, setProfileSize] = useState(2.0);
 
   const fetchExpenses = async () => {
     setIsLoadingList(true);
@@ -133,24 +107,22 @@ export default function ExpensesPage() {
       const res = await api.get("/api/v1/expenses/");
       setExpenses(res.data);
     } catch {
-      showToast("Failed to fetch expenses", "error");
+      showToast("Failed to retrieve expense logs", "error");
     } finally {
       setIsLoadingList(false);
     }
   };
 
-  const optimizeExpenses = async () => {
+  const fetchOptimization = async () => {
     setIsLoadingOptimization(true);
     try {
-      const res = await api.post("/api/v1/expenses/optimize", null, {
-        params: {
-          farm_size: profileSize,
-          crop_context: profileCrop,
-        },
+      const res = await api.post("/api/v1/expenses/optimize", {
+        farm_size_hectares: profileSize,
+        crop: crop || "Wheat",
       });
       setReport(res.data);
     } catch {
-      showToast("AI Optimization analysis failed", "error");
+      // Ignore silently
     } finally {
       setIsLoadingOptimization(false);
     }
@@ -158,23 +130,19 @@ export default function ExpensesPage() {
 
   useEffect(() => {
     fetchExpenses();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-trigger optimization when expenses load
   useEffect(() => {
     if (expenses.length > 0) {
-      optimizeExpenses();
-    } else {
-      setReport(null);
+      fetchOptimization();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expenses]);
+  }, [expenses.length]);
 
-  const handleAddExpense = async (e: React.FormEvent) => {
+  const handleCreateExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || parseFloat(amount) <= 0) {
-      showToast("Please enter a valid amount", "error");
+      showToast("Enter a valid expense amount", "error");
       return;
     }
     setIsSubmitting(true);
@@ -184,16 +152,12 @@ export default function ExpensesPage() {
         amount: parseFloat(amount),
         description,
         expense_date: expenseDate,
-        crop: crop || undefined,
-        notes,
+        crop,
       });
-      showToast("Expense logged successfully", "success");
+      showToast("Expense entry logged", "success");
       setIsModalOpen(false);
-      // Reset form
       setAmount("");
       setDescription("");
-      setNotes("");
-      // Refresh
       fetchExpenses();
     } catch {
       showToast("Failed to log expense", "error");
@@ -213,7 +177,6 @@ export default function ExpensesPage() {
     }
   };
 
-  // Calculations
   const totalSpend = expenses.reduce((s, e) => s + e.amount, 0);
 
   const categoryBreakdown = expenses.reduce((acc, exp) => {
@@ -222,115 +185,115 @@ export default function ExpensesPage() {
   }, {} as Record<string, number>);
 
   return (
-    <div className="min-h-screen bg-neutral-950 flex flex-col">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans pb-16">
       {/* Header */}
-      <header className="glass sticky top-0 z-40 border-b border-neutral-800">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push("/dashboard")}
-              className="text-neutral-400 hover:text-white p-2 rounded-xl hover:bg-neutral-800 transition-all"
+              className="text-slate-500 hover:text-slate-900 p-2 rounded-xl hover:bg-slate-100 border border-slate-200 transition-all"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
             </button>
             <div className="flex items-center gap-3">
-              <div className="bg-primary/10 p-2 rounded-xl border border-primary/20">
-                <Coins className="h-5 w-5 text-primary" />
+              <div className="bg-amber-50 text-amber-600 p-2 rounded-xl border border-amber-100">
+                <Coins className="h-5 w-5" />
               </div>
               <div>
-                <span className="font-display font-bold text-white text-lg">AI Expense Optimizer</span>
-                <p className="text-[10px] text-neutral-500 -mt-0.5 font-semibold uppercase tracking-wider">Precision Cost Analysis & Forecaster</p>
+                <span className="font-display font-bold text-slate-900 text-base">Expense Optimizer</span>
+                <p className="text-xs text-slate-500">Precision Cost Analysis & Forecaster</p>
               </div>
             </div>
           </div>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-primary hover:bg-primary-600 text-neutral-950 font-bold px-4 py-2 rounded-xl text-xs transition-all shadow-[0_0_15px_rgba(0,200,117,0.15)]"
+            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition-all shadow-sm"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-3.5 w-3.5" />
             Add Expense
           </button>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 md:px-6 py-8 w-full space-y-8">
+      <main className="flex-1 max-w-7xl mx-auto px-4 md:px-6 py-8 w-full space-y-6">
         
         {/* Top KPI row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          <div className="glass border border-neutral-800 rounded-3xl p-6 flex items-center justify-between">
+          <div className="clean-card p-6 flex items-center justify-between bg-white shadow-sm">
             <div>
-              <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Total Investment</span>
-              <h2 className="text-2xl font-bold text-white mt-1">₹{totalSpend.toLocaleString("en-IN")}</h2>
-              <span className="text-[10px] text-neutral-400 font-semibold mt-1 block">{expenses.length} logged items</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Spend</span>
+              <h2 className="text-2xl font-bold text-slate-900 mt-1">₹{totalSpend.toLocaleString("en-IN")}</h2>
+              <span className="text-[11px] text-slate-500 mt-1 block">{expenses.length} logged records</span>
             </div>
-            <div className="p-3 bg-neutral-900 border border-neutral-800 rounded-2xl">
-              <Coins className="h-6 w-6 text-primary" />
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
+              <Coins className="h-5 w-5 text-slate-700" />
             </div>
           </div>
 
-          <div className="glass border border-neutral-800 rounded-3xl p-6 flex items-center justify-between">
+          <div className="clean-card p-6 flex items-center justify-between bg-white shadow-sm">
             <div>
-              <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Savings Identified</span>
-              <h2 className="text-2xl font-bold text-primary mt-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Identified Savings</span>
+              <h2 className="text-2xl font-bold text-emerald-700 mt-1">
                 {isLoadingOptimization ? (
-                  <span className="text-sm font-normal text-neutral-500">Calculating...</span>
+                  <span className="text-sm font-normal text-slate-400">Calculating...</span>
                 ) : (
                   `₹${(report?.savings_opportunity ?? 0).toLocaleString("en-IN")}`
                 )}
               </h2>
-              <span className="text-[10px] text-neutral-400 font-semibold mt-1 block">
-                {report?.overall_health ? `Status: ${report.overall_health}` : "Awaiting expenses"}
+              <span className="text-[11px] text-slate-500 mt-1 block">
+                {report?.overall_health ? `Health: ${report.overall_health}` : "Awaiting logs"}
               </span>
             </div>
-            <div className="p-3 bg-neutral-900 border border-neutral-800 rounded-2xl">
-              <Sparkles className="h-6 w-6 text-primary" />
+            <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-2xl">
+              <Sparkles className="h-5 w-5 text-emerald-600" />
             </div>
           </div>
 
-          <div className="glass border border-neutral-800 rounded-3xl p-6 flex items-center justify-between">
+          <div className="clean-card p-6 flex items-center justify-between bg-white shadow-sm">
             <div>
-              <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Profitability Forecast</span>
-              <h2 className={`text-2xl font-bold mt-1 ${report?.profitability_forecast?.net_margin && report.profitability_forecast.net_margin > 0 ? "text-emerald-400" : "text-primary"}`}>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estimated Net Margin</span>
+              <h2 className="text-2xl font-bold text-slate-900 mt-1">
                 {isLoadingOptimization ? (
-                  <span className="text-sm font-normal text-neutral-500">Calculating...</span>
+                  <span className="text-sm font-normal text-slate-400">Calculating...</span>
                 ) : (
                   `₹${(report?.profitability_forecast?.net_margin ?? 0).toLocaleString("en-IN")}`
                 )}
               </h2>
-              <span className="text-[10px] text-neutral-400 font-semibold mt-1 block">
-                {report?.profitability_forecast?.crop ? `Based on ${report.profitability_forecast.crop}` : "Enter expenses first"}
+              <span className="text-[11px] text-slate-500 mt-1 block">
+                {report?.profitability_forecast?.crop ? `Crop: ${report.profitability_forecast.crop}` : "Enter expenses first"}
               </span>
             </div>
-            <div className="p-3 bg-neutral-900 border border-neutral-800 rounded-2xl">
-              <TrendingUp className="h-6 w-6 text-primary" />
+            <div className="p-3 bg-sky-50 border border-sky-100 rounded-2xl">
+              <TrendingUp className="h-5 w-5 text-sky-600" />
             </div>
           </div>
 
         </div>
 
         {/* Mid Row: Category breakdown + Profitability details */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Category breakdown visual charts */}
-          <div className="glass border border-neutral-800 rounded-3xl p-6 lg:col-span-1 flex flex-col justify-between">
+          <div className="clean-card p-6 lg:col-span-1 bg-white shadow-sm flex flex-col justify-between">
             <div>
-              <h3 className="text-sm font-bold text-neutral-300 border-b border-neutral-900 pb-3 mb-4">Investment Distribution</h3>
+              <h3 className="text-xs font-bold text-slate-700 border-b border-slate-100 pb-3 mb-4">Expense Categories</h3>
               
               {expenses.length === 0 ? (
-                <div className="text-center py-12 text-xs text-neutral-600">Add expenses to see breakdown.</div>
+                <div className="text-center py-10 text-xs text-slate-400">Add expenses to view breakdown.</div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3.5">
                   {Object.entries(categoryBreakdown).map(([cat, amt]) => {
                     const pct = totalSpend > 0 ? (amt / totalSpend) * 100 : 0;
-                    const col = CATEGORY_COLORS[cat] ?? "bg-neutral-600";
+                    const col = CATEGORY_COLORS[cat] ?? "bg-slate-500";
                     return (
-                      <div key={cat} className="space-y-1.5">
-                        <div className="flex justify-between text-xs font-semibold">
-                          <span className="text-neutral-400">{cat}</span>
-                          <span className="text-neutral-200">₹{amt.toLocaleString("en-IN")} ({pct.toFixed(0)}%)</span>
+                      <div key={cat} className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-600">{cat}</span>
+                          <span className="text-slate-900 font-semibold">₹{amt.toLocaleString("en-IN")} ({pct.toFixed(0)}%)</span>
                         </div>
-                        <div className="h-2 bg-neutral-900 rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                           <div className={`h-full ${col} rounded-full`} style={{ width: `${pct}%` }} />
                         </div>
                       </div>
@@ -342,47 +305,47 @@ export default function ExpensesPage() {
           </div>
 
           {/* Profitability forecast widget details */}
-          <div className="glass border border-neutral-800 rounded-3xl p-6 lg:col-span-2 space-y-4">
-            <h3 className="text-sm font-bold text-neutral-300 border-b border-neutral-900 pb-3">Forecast Breakdown</h3>
+          <div className="clean-card p-6 lg:col-span-2 space-y-4 bg-white shadow-sm">
+            <h3 className="text-xs font-bold text-slate-700 border-b border-slate-100 pb-3">Profitability Forecast</h3>
             
             {report?.profitability_forecast ? (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="p-4 bg-neutral-900/60 border border-neutral-850 rounded-2xl">
-                  <span className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold">Estimated Yield</span>
-                  <div className="text-base font-bold text-white mt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                  <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Estimated Yield</span>
+                  <div className="text-base font-bold text-slate-900 mt-0.5">
                     {report.profitability_forecast.estimated_yield_tonnes} tonnes
                   </div>
-                  <span className="text-[9px] text-neutral-600 block mt-0.5">{profileSize} Ha field</span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">{profileSize} Ha acreage</span>
                 </div>
 
-                <div className="p-4 bg-neutral-900/60 border border-neutral-850 rounded-2xl">
-                  <span className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold">Market Rate</span>
-                  <div className="text-base font-bold text-white mt-1">
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                  <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Market Rate</span>
+                  <div className="text-base font-bold text-slate-900 mt-0.5">
                     ₹{report.profitability_forecast.market_price_per_qtl}/qtl
                   </div>
-                  <span className="text-[9px] text-neutral-600 block mt-0.5">Estimated MSP average</span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">Estimated mandi price</span>
                 </div>
 
-                <div className="p-4 bg-neutral-900/60 border border-neutral-850 rounded-2xl">
-                  <span className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold">Projected Revenue</span>
-                  <div className="text-base font-bold text-white mt-1">
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                  <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Gross Revenue</span>
+                  <div className="text-base font-bold text-slate-900 mt-0.5">
                     ₹{report.profitability_forecast.estimated_revenue.toLocaleString("en-IN")}
                   </div>
-                  <span className="text-[9px] text-neutral-600 block mt-0.5">Yield × Market Price</span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">Yield × Market Price</span>
                 </div>
 
-                <div className="p-4 bg-primary/5 border border-primary/15 rounded-2xl">
-                  <span className="text-[10px] text-primary uppercase tracking-widest font-bold">Projected Margin</span>
-                  <div className="text-base font-bold text-primary mt-1">
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl">
+                  <span className="text-[10px] text-emerald-800 uppercase tracking-wider font-bold">Projected Net Margin</span>
+                  <div className="text-base font-bold text-emerald-800 mt-0.5">
                     ₹{report.profitability_forecast.net_margin.toLocaleString("en-IN")}
                   </div>
-                  <span className="text-[9px] text-primary/60 block mt-0.5">Net farm earnings</span>
+                  <span className="text-[10px] text-emerald-700 block mt-0.5">Estimated farm profits</span>
                 </div>
               </div>
             ) : (
-              <div className="text-center py-10 text-xs text-neutral-600 flex flex-col items-center justify-center">
-                <Target className="h-8 w-8 text-neutral-800 mb-2" />
-                <span>Profitability forecasts require logged farm parameters.</span>
+              <div className="text-center py-10 text-xs text-slate-400 flex flex-col items-center justify-center">
+                <Target className="h-6 w-6 text-slate-300 mb-2" />
+                <span>Add your crop expenses to view revenue projection and margin estimates.</span>
               </div>
             )}
           </div>
@@ -390,36 +353,36 @@ export default function ExpensesPage() {
         </div>
 
         {/* AI Recommendations panel */}
-        <div className="glass border border-primary/10 rounded-3xl p-6 bg-primary/[0.01]">
-          <div className="flex items-center gap-2 border-b border-neutral-900 pb-3 mb-6">
-            <Sparkles className="h-5 w-5 text-primary" />
-            <h3 className="text-sm font-bold text-white">AI Cost-Saving Recommendations</h3>
+        <div className="clean-card p-6 bg-white shadow-sm">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-5">
+            <Sparkles className="h-4 w-4 text-emerald-600" />
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Cost Reduction Suggestions</h3>
           </div>
 
           {isLoadingOptimization ? (
-            <div className="flex items-center justify-center py-10 gap-2 text-xs text-neutral-500">
-              <RefreshCw className="h-4 w-4 animate-spin text-primary" />
-              <span>Gemini is auditing spending patterns...</span>
+            <div className="flex items-center justify-center py-8 gap-2 text-xs text-slate-400">
+              <RefreshCw className="h-4 w-4 animate-spin text-emerald-600" />
+              <span>Analyzing spending patterns...</span>
             </div>
           ) : !report?.suggestions || report.suggestions.length === 0 ? (
-            <div className="text-center py-10 text-xs text-neutral-600">
-              No cost saving warnings generated. Your spending pattern looks optimal!
+            <div className="text-center py-8 text-xs text-slate-400">
+              No cost anomalies detected. Your operational expenditure is aligned with best practices!
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {report.suggestions.map((sug, i) => (
-                <div key={i} className="glass border border-neutral-800 p-5 rounded-2xl space-y-3">
+                <div key={i} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full uppercase tracking-wider">
                       {sug.category}
                     </span>
-                    <span className="text-xs font-bold text-emerald-400">
+                    <span className="text-xs font-bold text-emerald-700">
                       Save {sug.saving_estimate}
                     </span>
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-white leading-snug">{sug.issue}</h4>
-                    <p className="text-xs text-neutral-400 mt-2 leading-relaxed">{sug.solution}</p>
+                    <h4 className="text-xs font-bold text-slate-900 leading-snug">{sug.issue}</h4>
+                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">{sug.solution}</p>
                   </div>
                 </div>
               ))}
@@ -428,54 +391,53 @@ export default function ExpensesPage() {
         </div>
 
         {/* Expenses List / Log table */}
-        <div className="glass border border-neutral-800 rounded-3xl p-6">
-          <h3 className="text-sm font-bold text-neutral-300 border-b border-neutral-900 pb-3 mb-4">Expense Records</h3>
+        <div className="clean-card p-6 bg-white shadow-sm">
+          <h3 className="text-xs font-bold text-slate-700 border-b border-slate-100 pb-3 mb-4">Expense Records</h3>
           
           {isLoadingList ? (
             <div className="flex justify-center py-10">
-              <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+              <RefreshCw className="h-5 w-5 animate-spin text-emerald-600" />
             </div>
           ) : expenses.length === 0 ? (
-            <div className="text-center py-12 text-xs text-neutral-600">
-              No expenses recorded yet. Use "Add Expense" to start.
+            <div className="text-center py-10 text-xs text-slate-400">
+              No expenses recorded yet. Use "Add Expense" to log your first input cost.
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-neutral-900 text-neutral-500 uppercase tracking-wider">
-                    <th className="py-3 px-4">Date</th>
-                    <th className="py-3 px-4">Category</th>
-                    <th className="py-3 px-4">Description</th>
-                    <th className="py-3 px-4">Crop</th>
-                    <th className="py-3 px-4 text-right">Amount</th>
-                    <th className="py-3 px-4 text-right">Action</th>
+                  <tr className="border-b border-slate-200 text-slate-400 uppercase tracking-wider">
+                    <th className="py-2.5 px-3">Date</th>
+                    <th className="py-2.5 px-3">Category</th>
+                    <th className="py-2.5 px-3">Description</th>
+                    <th className="py-2.5 px-3">Crop</th>
+                    <th className="py-2.5 px-3 text-right">Amount</th>
+                    <th className="py-2.5 px-3 text-center">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-900/60">
+                <tbody className="divide-y divide-slate-100">
                   {expenses.map(e => (
-                    <tr key={e.id} className="hover:bg-neutral-900/20 text-neutral-300">
-                      <td className="py-3.5 px-4 font-medium">
-                        {new Date(e.expense_date + "T00:00:00").toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
+                    <tr key={e.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="py-3 px-3 text-slate-500 font-medium">
+                        {new Date(e.expense_date + "T00:00:00").toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
                       </td>
-                      <td className="py-3.5 px-4">
-                        <span className="px-2 py-0.5 rounded bg-neutral-900 text-[10px] font-semibold border border-neutral-850">
+                      <td className="py-3 px-3">
+                        <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-semibold border border-slate-200">
                           {e.category}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-neutral-400 max-w-xs truncate">{e.description || "—"}</td>
-                      <td className="py-3.5 px-4 font-semibold">{e.crop || "—"}</td>
-                      <td className="py-3.5 px-4 text-right font-bold text-primary">₹{e.amount.toLocaleString("en-IN")}</td>
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-3 px-3 text-slate-900 font-semibold">{e.description || "—"}</td>
+                      <td className="py-3 px-3 text-slate-600">{e.crop || "—"}</td>
+                      <td className="py-3 px-3 text-right font-bold text-slate-900">
+                        ₹{e.amount.toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3 px-3 text-center">
                         <button
                           onClick={() => handleDeleteExpense(e.id)}
-                          className="text-neutral-600 hover:text-red-400 p-1.5 rounded-lg hover:bg-neutral-900 transition-all"
+                          className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-slate-100 transition-colors"
+                          title="Delete expense"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </td>
                     </tr>
@@ -490,115 +452,100 @@ export default function ExpensesPage() {
 
       {/* Add Expense Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-fade-in">
-          <div className="glass border border-neutral-800 rounded-3xl w-full max-w-md overflow-hidden relative animate-slide-up">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-fade-in">
+          <div className="clean-card bg-white rounded-2xl w-full max-w-md overflow-hidden relative shadow-2xl">
             
             {/* Header */}
-            <div className="border-b border-neutral-800 p-6 flex justify-between items-center">
+            <div className="border-b border-slate-100 p-5 flex justify-between items-center">
               <div>
-                <h3 className="text-lg font-bold text-white">Record Expense</h3>
-                <p className="text-xs text-neutral-500 mt-0.5 font-medium">Keep track of your farm operational costs.</p>
+                <h3 className="text-base font-bold text-slate-900">Record Farm Expense</h3>
+                <p className="text-xs text-slate-500">Log inputs, labor, or machinery costs.</p>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 rounded-xl text-neutral-500 hover:text-white hover:bg-neutral-900 border border-transparent hover:border-neutral-800 transition-all"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleAddExpense}>
-              <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-                
-                <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleCreateExpense}>
+              <div className="p-5 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Category</label>
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Category</label>
                     <select
                       value={category}
                       onChange={e => setCategory(e.target.value)}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-medium"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs outline-none focus:bg-white focus:border-emerald-600 transition-colors"
                     >
-                      {EXPENSE_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                      {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Amount (INR)</label>
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Amount (₹)</label>
                     <input
                       type="number"
                       value={amount}
                       onChange={e => setAmount(e.target.value)}
-                      placeholder="e.g. 8500"
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs placeholder-neutral-600 outline-none focus:border-primary transition-colors font-semibold"
+                      placeholder="e.g. 4500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs placeholder-slate-400 outline-none focus:bg-white focus:border-emerald-600 transition-colors"
                       required
-                      min="1"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Date</label>
-                  <input
-                    type="date"
-                    value={expenseDate}
-                    onChange={e => setExpenseDate(e.target.value)}
-                    className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Description / Supplier</label>
-                  <input
-                    type="text"
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                    placeholder="e.g. Purchased 5 bags of Neem Urea"
-                    className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs placeholder-neutral-600 outline-none focus:border-primary transition-colors"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Crop Context</label>
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Crop</label>
                     <select
                       value={crop}
                       onChange={e => setCrop(e.target.value)}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-medium"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs outline-none focus:bg-white focus:border-emerald-600 transition-colors"
                     >
-                      <option value="">None</option>
                       {CROPS.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Notes (optional)</label>
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Date</label>
                     <input
-                      type="text"
-                      value={notes}
-                      onChange={e => setNotes(e.target.value)}
-                      placeholder="e.g. Paid in cash"
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs placeholder-neutral-600 outline-none focus:border-primary transition-colors"
+                      type="date"
+                      value={expenseDate}
+                      onChange={e => setExpenseDate(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs outline-none focus:bg-white focus:border-emerald-600 transition-colors"
+                      required
                     />
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Description / Notes</label>
+                  <input
+                    type="text"
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    placeholder="e.g. 2 bags Urea, 1 liter bio-fungicide"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs placeholder-slate-400 outline-none focus:bg-white focus:border-emerald-600 transition-colors"
+                  />
+                </div>
               </div>
 
               {/* Footer */}
-              <div className="border-t border-neutral-800 p-6 flex gap-4">
+              <div className="border-t border-slate-100 p-4 flex gap-3 bg-slate-50">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 bg-neutral-900 hover:bg-neutral-850 border border-neutral-850 text-neutral-200 font-semibold py-3 rounded-xl text-xs transition-colors"
+                  className="flex-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-xs transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-[2] bg-primary hover:bg-primary-600 disabled:opacity-50 text-neutral-950 font-bold py-3 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(0,200,117,0.15)]"
+                  className="flex-[2] bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm"
                 >
-                  {isSubmitting ? <><RefreshCw className="h-4 w-4 animate-spin" />Saving...</> : "Save Expense"}
+                  {isSubmitting ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" />Saving...</> : "Save Expense"}
                 </button>
               </div>
             </form>

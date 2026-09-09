@@ -21,19 +21,53 @@ from app.models.expense import Expense
 from app.models.activity import ActivityLog
 from app.models.scan import ScanLog
 
-def seed_data_for_db(session):
+def seed_data_for_db(session, include_all_users: bool = True):
     # Ensure tables exist
     Base.metadata.create_all(bind=session.bind)
 
-    users = session.query(User).all()
-    if not users:
-        print("No users found in database! Creating default farmer user john@gmail.com...")
-        from app.core.security import get_password_hash
+    from app.core.security import get_password_hash
+
+    # 1. Ensure Admin User exists
+    # This is an intentionally public, local-only demonstration account.  Keep
+    # its credentials aligned with the one-click credentials in the web UI so
+    # a seeded installation can always demonstrate the complete SAR workflow.
+    admin_email = "admin@agrinexus.demo"
+    admin_password = "admin123"
+    existing_admin = session.query(User).filter(User.email == admin_email).first()
+    if not existing_admin:
+        print(f"Creating default admin user: {admin_email}...")
+        demo_admin = User(
+            email=admin_email,
+            hashed_password=get_password_hash(admin_password),
+            full_name="AgriNexus System Administrator",
+            role="admin",
+            is_active=True,
+            is_superuser=True,
+            state="Maharashtra"
+        )
+        session.add(demo_admin)
+        session.commit()
+    else:
+        demo_admin = existing_admin
+        # Re-seeding must repair older demo databases that used the legacy
+        # password, otherwise the advertised demonstration login cannot work.
+        demo_admin.hashed_password = get_password_hash(admin_password)
+        existing_admin.role = "admin"
+        existing_admin.is_superuser = True
+        existing_admin.is_active = True
+        session.commit()
+
+    # 2. Ensure the optional general-purpose farmer fixture exists for the
+    # command-line seed operation.  Application startup seeds only the
+    # dedicated demo administrator so real users never receive demo farms.
+    existing_farmer = session.query(User).filter(User.email == "john@gmail.com").first()
+    if include_all_users and not existing_farmer:
+        print("Creating default farmer user: john@gmail.com...")
         default_user = User(
             email="john@gmail.com",
             hashed_password=get_password_hash("Password123!"),
             full_name="John Doe",
-            phone="9876543210",
+            phone_number="9876543210",
             role="farmer",
             state="Punjab",
             is_active=True
@@ -41,7 +75,16 @@ def seed_data_for_db(session):
         session.add(default_user)
         session.commit()
         session.refresh(default_user)
-        users = [default_user]
+
+    # Include the dedicated administrator: it owns the curated demonstration
+    # fields and their persisted Sentinel-1 SAR history.  This makes the demo
+    # account useful immediately after login, not just the public map preview.
+    users = [demo_admin]
+    if include_all_users:
+        users.extend(
+            user for user in session.query(User).filter(User.role != "admin").all()
+            if user.id != demo_admin.id
+        )
 
     for user in users:
         print(f"\n--- Seeding demo farm data for User: {user.full_name} ({user.email}, ID: {user.id}) ---")

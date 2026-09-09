@@ -16,7 +16,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-def validate_crop_image(image_bytes: bytes, max_size_bytes: int = 5 * 1024 * 1024) -> Tuple[bool, Dict[str, Any], Image.Image | None]:
+def validate_crop_image(image_bytes: bytes, max_size_bytes: int = 10 * 1024 * 1024) -> Tuple[bool, Dict[str, Any], Image.Image | None]:
     """
     Validates uploaded image against quality and integrity standards.
     Returns:
@@ -34,7 +34,7 @@ def validate_crop_image(image_bytes: bytes, max_size_bytes: int = 5 * 1024 * 102
         return False, {
             "status": "image_quality_error",
             "error_code": "IMAGE_TOO_LARGE",
-            "message": "Image file size exceeds the 5MB maximum limit."
+            "message": "Image file size exceeds the 10MB maximum limit."
         }, None
 
     # 2. PIL Decoding & Corrupted Byte Check
@@ -52,11 +52,11 @@ def validate_crop_image(image_bytes: bytes, max_size_bytes: int = 5 * 1024 * 102
 
     # 3. Minimum Resolution Check
     width, height = img_pil.size
-    if width < 64 or height < 64:
+    if width < 48 or height < 48:
         return False, {
             "status": "image_quality_error",
             "error_code": "IMAGE_QUALITY_TOO_LOW",
-            "message": f"Image resolution ({width}x{height}) is too small for foliar disease analysis (minimum 64x64 required)."
+            "message": f"Image resolution ({width}x{height}) is too small for foliar disease analysis (minimum 48x48 required)."
         }, None
 
     # 4. Exposure & Solid Frame Checks (Black / White / Zero Contrast)
@@ -66,24 +66,24 @@ def validate_crop_image(image_bytes: bytes, max_size_bytes: int = 5 * 1024 * 102
     mean_brightness = float(np.mean(gray_np))
     std_contrast = float(np.std(gray_np))
 
-    # Completely or almost completely black
-    if mean_brightness < 12.0:
+    # Completely or almost completely pitch black
+    if mean_brightness < 8.0 and std_contrast < 5.0:
         return False, {
             "status": "image_quality_error",
             "error_code": "IMAGE_QUALITY_TOO_LOW",
             "message": "Image is completely dark or under-exposed. Please upload a photo in natural lighting."
         }, None
 
-    # Completely or almost completely white
-    if mean_brightness > 245.0 and std_contrast < 8.0:
+    # Completely pure solid white frame with zero variation
+    if mean_brightness > 252.0 and std_contrast < 3.0:
         return False, {
             "status": "image_quality_error",
             "error_code": "IMAGE_QUALITY_TOO_LOW",
-            "message": "Image is over-exposed or completely white. Please upload a photo showing leaf details."
+            "message": "Image is completely blank white. Please upload a photo showing leaf details."
         }, None
 
-    # Extreme flat contrast
-    if std_contrast < 6.0:
+    # Extreme flat solid color
+    if std_contrast < 3.0:
         return False, {
             "status": "image_quality_error",
             "error_code": "IMAGE_QUALITY_TOO_LOW",
@@ -95,12 +95,12 @@ def validate_crop_image(image_bytes: bytes, max_size_bytes: int = 5 * 1024 * 102
     lap_img = gray.filter(laplacian_kernel)
     lap_var = float(np.var(np.array(lap_img, dtype=np.float32)))
 
-    # Laplacian variance threshold: < 20.0 indicates severe, unusable blur
-    if lap_var < 20.0:
+    # Laplacian variance threshold: < 10.0 indicates severe, unusable blur
+    if lap_var < 10.0:
         return False, {
             "status": "image_quality_error",
             "error_code": "IMAGE_QUALITY_TOO_LOW",
-            "message": f"Image is too blurry for reliable disease diagnosis (Laplacian sharpness: {round(lap_var, 1)} < 20.0). Please retake with clean focus."
+            "message": f"Image is too blurry for reliable disease diagnosis (sharpness score {round(lap_var, 1)} < 10.0). Please retake with clean focus."
         }, None
 
     # Passed all pre-flight checks

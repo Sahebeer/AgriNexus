@@ -36,63 +36,56 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center px-6 py-24 relative bg-neutral-950">
+    <div className="min-h-screen flex flex-col justify-center items-center px-6 py-20 bg-slate-50 text-slate-900 font-sans">
       {/* Header */}
-      <header className="glass fixed top-0 w-full z-50 border-b border-neutral-800">
+      <header className="fixed top-0 w-full z-50 bg-white/85 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="bg-primary/10 p-2 rounded-xl border border-primary/20 group-hover:border-primary/40 transition-colors">
-              <Sprout className="h-6 w-6 text-primary" />
+          <Link href="/" className="flex items-center gap-3">
+            <div className="bg-emerald-50 text-emerald-700 p-2 rounded-xl border border-emerald-100">
+              <Sprout className="h-5 w-5" />
             </div>
-            <span className="font-display font-bold text-xl tracking-tight bg-gradient-to-r from-neutral-50 to-neutral-400 bg-clip-text text-transparent">
-              AgriNexus <span className="text-primary">AI</span>
+            <span className="font-display font-bold text-lg text-slate-900">
+              AgriNexus
             </span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-neutral-400">
-            <Link href="/#features" className="hover:text-primary transition-colors">OS Modules</Link>
-            <Link href="/#platform" className="hover:text-primary transition-colors">AI Core</Link>
-            <Link href="/#schemes" className="hover:text-primary transition-colors">Schemes</Link>
-            <Link href="/#docs" className="hover:text-primary transition-colors">System Docs</Link>
-          </nav>
-
           <div className="flex items-center gap-4">
-            <span className="text-xs text-neutral-500 hidden sm:inline">New operator?</span>
+            <span className="text-xs text-slate-500 hidden sm:inline">Need an account?</span>
             <Link 
               href="/register" 
-              className="bg-neutral-900 hover:bg-neutral-850 border border-neutral-800 hover:border-neutral-700 text-neutral-200 font-semibold px-4 py-2 rounded-xl text-sm transition-all duration-300 flex items-center gap-1 group"
+              className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-xl text-xs transition-all shadow-sm flex items-center gap-1"
             >
               Sign Up
-              <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Background Glow Effect */}
-      <div className="absolute w-[450px] h-[450px] bg-primary/5 rounded-full blur-[90px] top-1/4 left-1/3 pointer-events-none"></div>
-
-      <div className="w-full max-w-md z-10">
+      <div className="w-full max-w-md pt-12">
         {/* Branding header */}
         <div className="flex flex-col items-center mb-6 text-center">
-          <h2 className="font-display text-3xl font-bold tracking-tight text-white">
-            Access Farm OS
+          <div className="bg-emerald-50 text-emerald-700 p-3 rounded-2xl border border-emerald-100 mb-3">
+            <Sprout className="h-6 w-6" />
+          </div>
+          <h2 className="font-display text-2xl font-bold tracking-tight text-slate-900">
+            Sign In to AgriNexus
           </h2>
-          <p className="text-sm text-neutral-400 mt-2">
-            Enter credentials to connect to AgriNexus gateways.
+          <p className="text-xs text-slate-500 mt-1">
+            Access your farms, soil records, and agronomic tools
           </p>
         </div>
 
         {/* Card Frame */}
-        <div className="glass rounded-3xl p-8 border border-neutral-800 shadow-2xl relative overflow-hidden">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="clean-card p-8 bg-white shadow-lg shadow-slate-200/50">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Input Email */}
             <div>
-              <label htmlFor="email" className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+              <label htmlFor="email" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Email Address
               </label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-500" />
+                <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   id="email"
                   type="email"
@@ -101,8 +94,8 @@ export default function LoginPage() {
                     setEmail(e.target.value);
                     if (validationError) setValidationError(null);
                   }}
-                  placeholder="name@farm.com"
-                  className="w-full bg-neutral-900/60 border border-neutral-850 hover:border-neutral-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl py-3 pl-12 pr-4 text-sm text-white placeholder-neutral-500 outline-none transition-all duration-300"
+                  placeholder="operator@farm.com"
+                  className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-900 placeholder-slate-400 outline-none transition-all"
                   disabled={isLoading}
                 />
               </div>
@@ -110,16 +103,13 @@ export default function LoginPage() {
 
             {/* Input Password */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label htmlFor="password" className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="password" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
                   Password
                 </label>
-                <a href="#" className="text-xs text-neutral-500 hover:text-primary transition-colors">
-                  Forgot?
-                </a>
               </div>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-500" />
+                <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   id="password"
                   type="password"
@@ -129,7 +119,7 @@ export default function LoginPage() {
                     if (validationError) setValidationError(null);
                   }}
                   placeholder="••••••••"
-                  className="w-full bg-neutral-900/60 border border-neutral-850 hover:border-neutral-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl py-3 pl-12 pr-4 text-sm text-white placeholder-neutral-500 outline-none transition-all duration-300"
+                  className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-900 placeholder-slate-400 outline-none transition-all"
                   disabled={isLoading}
                 />
               </div>
@@ -137,8 +127,8 @@ export default function LoginPage() {
 
             {/* Error alerts */}
             {(validationError || error) && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-sm flex items-start gap-3 animate-fade-in">
-                <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3 rounded-xl text-xs flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5 text-rose-600" />
                 <span>{validationError || error}</span>
               </div>
             )}
@@ -146,15 +136,15 @@ export default function LoginPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-primary hover:bg-primary-600 text-neutral-950 font-bold py-3.5 rounded-xl text-sm transition-all duration-300 shadow-[0_0_20px_rgba(0,200,117,0.15)] flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl text-xs transition-all shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
               disabled={isLoading}
             >
               {isLoading ? (
-                <span className="h-5 w-5 border-2 border-neutral-950 border-t-transparent rounded-full animate-spin"></span>
+                <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
               ) : (
                 <>
-                  Connect Gateway
-                  <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                  Sign In
+                  <ArrowRight className="h-4 w-4" />
                 </>
               )}
             </button>
@@ -162,10 +152,10 @@ export default function LoginPage() {
         </div>
 
         {/* Create account suggestion */}
-        <p className="text-center text-sm text-neutral-500 mt-6">
+        <p className="text-center text-xs text-slate-500 mt-5">
           New to AgriNexus?{" "}
-          <Link href="/register" className="text-primary hover:text-white font-medium transition-colors">
-            Create an operator profile
+          <Link href="/register" className="text-emerald-700 font-semibold hover:underline">
+            Create an account
           </Link>
         </p>
       </div>

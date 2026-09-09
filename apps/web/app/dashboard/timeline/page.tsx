@@ -24,12 +24,10 @@ import {
   Bot,
   FileText,
   FileSpreadsheet,
-  CheckCircle,
+  CheckCircle2,
   HelpCircle,
   X,
 } from "lucide-react";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ActivityLog {
   id: number;
@@ -43,8 +41,6 @@ interface ActivityLog {
   metadata_json: string | null;
   created_at: string;
 }
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const ACTIVITY_TYPES = [
   "Disease Scan",
@@ -68,26 +64,24 @@ const CROPS = [
 ];
 
 const TYPE_CONFIG: Record<string, { icon: React.FC<any>; bg: string; text: string; border: string }> = {
-  "Disease Scan":           { icon: ShieldAlert,  bg: "bg-red-500/10",    text: "text-red-400",    border: "border-red-500/20" },
-  "AI Chat":                { icon: Bot,          bg: "bg-primary/10",    text: "text-primary",    border: "border-primary/20" },
-  "Fertilizer Application": { icon: FlaskConical, bg: "bg-amber-500/10",  text: "text-amber-400",  border: "border-amber-500/20" },
-  "Irrigation":             { icon: Droplets,     bg: "bg-blue-500/10",   text: "text-blue-400",   border: "border-blue-500/20" },
-  "Pesticide / Spray":      { icon: Bug,          bg: "bg-rose-500/10",   text: "text-rose-400",   border: "border-rose-500/20" },
-  "Harvest":                { icon: Sprout,       bg: "bg-emerald-500/10",text: "text-emerald-400",border: "border-emerald-500/20" },
-  "Purchase":               { icon: Coins,        bg: "bg-teal-500/10",   text: "text-teal-400",   border: "border-teal-500/20" },
-  "Expense":                { icon: Coins,        bg: "bg-orange-500/10", text: "text-orange-400", border: "border-orange-500/20" },
-  "Field Observation":      { icon: BookOpen,     bg: "bg-violet-500/10", text: "text-violet-400", border: "border-violet-500/20" },
-  "Shopping List":          { icon: FileSpreadsheet, bg: "bg-indigo-500/10", text: "text-indigo-400", border: "border-indigo-500/20" },
-  "Calendar Created":       { icon: Calendar,     bg: "bg-purple-500/10", text: "text-purple-400", border: "border-purple-500/20" },
-  "Note":                   { icon: FileText,     bg: "bg-neutral-800",   text: "text-neutral-300",border: "border-neutral-700" },
-  "Other":                  { icon: HelpCircle,   bg: "bg-neutral-800",   text: "text-neutral-400",border: "border-neutral-700" },
+  "Disease Scan":           { icon: ShieldAlert,  bg: "bg-rose-50",    text: "text-rose-600",    border: "border-rose-200" },
+  "AI Chat":                { icon: Bot,          bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
+  "Fertilizer Application": { icon: FlaskConical, bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200" },
+  "Irrigation":             { icon: Droplets,     bg: "bg-sky-50",     text: "text-sky-700",     border: "border-sky-200" },
+  "Pesticide / Spray":      { icon: Bug,          bg: "bg-rose-50",    text: "text-rose-700",    border: "border-rose-200" },
+  "Harvest":                { icon: Sprout,       bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
+  "Purchase":               { icon: Coins,        bg: "bg-teal-50",    text: "text-teal-700",    border: "border-teal-200" },
+  "Expense":                { icon: Coins,        bg: "bg-orange-50",  text: "text-orange-700",  border: "border-orange-200" },
+  "Field Observation":      { icon: BookOpen,     bg: "bg-purple-50",  text: "text-purple-700",  border: "border-purple-200" },
+  "Shopping List":          { icon: FileSpreadsheet, bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-200" },
+  "Calendar Created":       { icon: Calendar,     bg: "bg-purple-50",  text: "text-purple-700",  border: "border-purple-200" },
+  "Note":                   { icon: FileText,     bg: "bg-slate-100",  text: "text-slate-700",   border: "border-slate-200" },
+  "Other":                  { icon: HelpCircle,   bg: "bg-slate-100",  text: "text-slate-600",   border: "border-slate-200" },
 };
 
 function getTypeConfig(type: string) {
   return TYPE_CONFIG[type] ?? TYPE_CONFIG["Other"];
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function TimelinePage() {
   const router = useRouter();
@@ -167,13 +161,11 @@ export default function TimelinePage() {
       });
       showToast("Activity logged successfully", "success");
       setIsModalOpen(false);
-      // Reset form
       setNewTitle("");
       setNewDescription("");
       setNewCrop("");
       setNewFieldName("");
       setNewDate(new Date().toISOString().split("T")[0]);
-      // Refresh list
       fetchActivities();
       fetchStats();
     } catch {
@@ -204,62 +196,61 @@ export default function TimelinePage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 flex flex-col">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans pb-16">
       {/* Header */}
-      <header className="glass sticky top-0 z-40 border-b border-neutral-800">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push("/dashboard")}
-              className="text-neutral-400 hover:text-white p-2 rounded-xl hover:bg-neutral-800 transition-all"
+              className="text-slate-500 hover:text-slate-900 p-2 rounded-xl hover:bg-slate-100 border border-slate-200 transition-all"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
             </button>
             <div className="flex items-center gap-3">
-              <div className="bg-primary/10 p-2 rounded-xl border border-primary/20">
-                <Activity className="h-5 w-5 text-primary" />
+              <div className="bg-rose-50 text-rose-600 p-2 rounded-xl border border-rose-100">
+                <Activity className="h-5 w-5" />
               </div>
               <div>
-                <span className="font-display font-bold text-white text-lg">Activity Timeline</span>
-                <p className="text-[10px] text-neutral-500 -mt-0.5 font-semibold uppercase tracking-wider">Digital Farming Diary & Audit Log</p>
+                <span className="font-display font-bold text-slate-900 text-base">Activity Timeline</span>
+                <p className="text-xs text-slate-500">Digital Farming Diary & Log</p>
               </div>
             </div>
           </div>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-primary hover:bg-primary-600 text-neutral-950 font-bold px-4 py-2 rounded-xl text-xs transition-all shadow-[0_0_15px_rgba(0,200,117,0.15)]"
+            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition-all shadow-sm"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-3.5 w-3.5" />
             Log Activity
           </button>
         </div>
       </header>
 
       <main className="flex-1 max-w-7xl mx-auto px-4 md:px-6 py-8 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           
           {/* Filters & Stats Sidebar */}
           <div className="space-y-6">
-            {/* Filters panel */}
-            <div className="glass border border-neutral-800 rounded-3xl p-6 space-y-5">
-              <div className="flex items-center justify-between border-b border-neutral-900 pb-3">
-                <span className="text-xs font-bold text-neutral-300 flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-primary" /> Filters
+            <div className="clean-card p-6 space-y-4 bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <span className="text-xs font-bold text-slate-700 flex items-center gap-2">
+                  <Filter className="h-3.5 w-3.5 text-emerald-600" /> Filters
                 </span>
                 {(filterType || filterCrop || filterSource || dateFrom || dateTo) && (
-                  <button onClick={clearFilters} className="text-[10px] font-bold text-primary hover:underline">
-                    Clear All
+                  <button onClick={clearFilters} className="text-[10px] font-bold text-emerald-700 hover:underline">
+                    Clear
                   </button>
                 )}
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1.5">Activity Type</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Activity Type</label>
                   <select
                     value={filterType}
                     onChange={e => setFilterType(e.target.value)}
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary transition-colors"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none focus:bg-white focus:border-emerald-600 transition-colors"
                   >
                     <option value="">All Types</option>
                     {ACTIVITY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -267,11 +258,11 @@ export default function TimelinePage() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1.5">Crop Context</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Crop</label>
                   <select
                     value={filterCrop}
                     onChange={e => setFilterCrop(e.target.value)}
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary transition-colors"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none focus:bg-white focus:border-emerald-600 transition-colors"
                   >
                     <option value="">All Crops</option>
                     {CROPS.map(c => <option key={c} value={c}>{c}</option>)}
@@ -279,32 +270,32 @@ export default function TimelinePage() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1.5">Source</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Source</label>
                   <select
                     value={filterSource}
                     onChange={e => setFilterSource(e.target.value)}
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary transition-colors"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none focus:bg-white focus:border-emerald-600 transition-colors"
                   >
                     <option value="">All Sources</option>
                     <option value="auto">System Logs (Auto)</option>
-                    <option value="manual">User Entries (Manual)</option>
+                    <option value="manual">Manual Entries</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1.5">Date Range</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Date Range</label>
                   <div className="space-y-2">
                     <input
                       type="date"
                       value={dateFrom}
                       onChange={e => setDateFrom(e.target.value)}
-                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-[11px] text-white outline-none focus:border-primary transition-colors"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 outline-none focus:bg-white focus:border-emerald-600 transition-colors"
                     />
                     <input
                       type="date"
                       value={dateTo}
                       onChange={e => setDateTo(e.target.value)}
-                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-[11px] text-white outline-none focus:border-primary transition-colors"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 outline-none focus:bg-white focus:border-emerald-600 transition-colors"
                     />
                   </div>
                 </div>
@@ -312,23 +303,23 @@ export default function TimelinePage() {
             </div>
 
             {/* Quick summary stats */}
-            <div className="glass border border-neutral-800 rounded-3xl p-6">
-              <div className="text-xs font-bold text-neutral-300 border-b border-neutral-900 pb-3 mb-4 flex items-center gap-2">
-                <Activity className="h-4 w-4 text-primary" /> Log Summary
+            <div className="clean-card p-6 bg-white shadow-sm">
+              <div className="text-xs font-bold text-slate-700 border-b border-slate-100 pb-3 mb-3 flex items-center gap-2">
+                <Activity className="h-3.5 w-3.5 text-emerald-600" /> Summary Breakdown
               </div>
-              <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                 {Object.entries(stats).length === 0 ? (
-                  <div className="text-center py-4 text-xs text-neutral-600">No logs found.</div>
+                  <div className="text-center py-3 text-xs text-slate-400">No logs found.</div>
                 ) : (
                   Object.entries(stats).map(([type, count]) => {
                     const cfg = getTypeConfig(type);
                     return (
                       <div key={type} className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className={`h-2 w-2 rounded-full flex-shrink-0 ${cfg.text} ${cfg.bg}`} />
-                          <span className="text-neutral-400 truncate">{type}</span>
+                          <div className={`h-2 w-2 rounded-full flex-shrink-0 ${cfg.bg} border ${cfg.border}`} />
+                          <span className="text-slate-600 truncate">{type}</span>
                         </div>
-                        <span className="font-bold text-neutral-300">{count}</span>
+                        <span className="font-bold text-slate-900">{count}</span>
                       </div>
                     );
                   })
@@ -340,20 +331,20 @@ export default function TimelinePage() {
           {/* Timeline Feed */}
           <div className="lg:col-span-3">
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-20 text-neutral-500 gap-3">
-                <RefreshCw className="h-6 w-6 text-primary animate-spin" />
+              <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
+                <RefreshCw className="h-6 w-6 text-emerald-600 animate-spin" />
                 <span className="text-xs font-semibold">Loading timeline...</span>
               </div>
             ) : activities.length === 0 ? (
-              <div className="glass border border-neutral-800 rounded-3xl p-16 text-center">
-                <BookOpen className="h-10 w-10 text-neutral-700 mx-auto mb-4" />
-                <h3 className="font-bold text-neutral-300 mb-2">Your Diary is Empty</h3>
-                <p className="text-xs text-neutral-500 max-w-xs mx-auto leading-relaxed">
+              <div className="clean-card p-12 text-center bg-white shadow-sm">
+                <BookOpen className="h-8 w-8 text-slate-400 mx-auto mb-3" />
+                <h3 className="font-bold text-slate-800 text-sm mb-1">Your Diary is Empty</h3>
+                <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
                   Log your activities like seed purchases, irrigations, and fertilizer applications, or let the AI auto-log your scans and advisor chats.
                 </p>
               </div>
             ) : (
-              <div className="relative pl-6 md:pl-8 border-l border-neutral-900 space-y-6">
+              <div className="relative pl-6 md:pl-8 border-l border-slate-200 space-y-4">
                 {activities.map((act) => {
                   const cfg = getTypeConfig(act.activity_type);
                   const Icon = cfg.icon;
@@ -365,36 +356,36 @@ export default function TimelinePage() {
                   });
 
                   return (
-                    <div key={act.id} className="relative group animate-fade-in">
+                    <div key={act.id} className="relative group">
                       {/* Timeline dot */}
-                      <div className={`absolute -left-[38px] md:-left-[46px] top-1 h-8 w-8 rounded-full border-2 border-neutral-950 flex items-center justify-center ${cfg.bg} ${cfg.border}`}>
-                        <Icon className={`h-3.5 w-3.5 ${cfg.text}`} />
+                      <div className={`absolute -left-[37px] md:-left-[45px] top-1.5 h-7 w-7 rounded-full border-2 border-white flex items-center justify-center ${cfg.bg} ${cfg.border} shadow-sm`}>
+                        <Icon className={`h-3 w-3 ${cfg.text}`} />
                       </div>
 
                       {/* Log Card */}
-                      <div className="glass border border-neutral-800 group-hover:border-neutral-750 transition-all rounded-2xl p-5 space-y-3">
+                      <div className="clean-card p-5 space-y-2 bg-white shadow-sm hover:border-slate-300 transition-all">
                         <div className="flex items-start justify-between gap-4">
                           <div>
-                            <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                              <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${cfg.bg} ${cfg.border} ${cfg.text}`}>
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                              <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${cfg.bg} ${cfg.border} ${cfg.text}`}>
                                 {act.activity_type}
                               </span>
                               {act.crop && (
-                                <span className="text-[9px] uppercase font-bold tracking-wider bg-neutral-900 border border-neutral-850 px-2 py-0.5 rounded text-neutral-400">
+                                <span className="text-[10px] uppercase font-bold tracking-wider bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-slate-600">
                                   {act.crop}
                                 </span>
                               )}
                               {act.source === "auto" && (
-                                <span className="text-[8px] uppercase font-bold tracking-wider bg-primary/5 text-primary/75 px-1.5 py-0.5 rounded">
+                                <span className="text-[9px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-1.5 py-0.5 rounded">
                                   Auto
                                 </span>
                               )}
                             </div>
-                            <h3 className="font-bold text-white text-sm md:text-base leading-snug">{act.title}</h3>
+                            <h3 className="font-bold text-slate-900 text-sm leading-snug">{act.title}</h3>
                           </div>
                           <button
                             onClick={() => handleDeleteActivity(act.id)}
-                            className="text-neutral-600 hover:text-red-400 p-1.5 rounded-lg hover:bg-neutral-900 transition-all opacity-0 group-hover:opacity-100 flex-shrink-0"
+                            className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-slate-100 transition-all opacity-0 group-hover:opacity-100 flex-shrink-0"
                             title="Delete entry"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -402,15 +393,15 @@ export default function TimelinePage() {
                         </div>
 
                         {act.description && (
-                          <p className="text-xs text-neutral-400 leading-relaxed max-w-3xl whitespace-pre-line">{act.description}</p>
+                          <p className="text-xs text-slate-600 leading-relaxed max-w-3xl whitespace-pre-line">{act.description}</p>
                         )}
 
-                        <div className="flex items-center gap-4 text-[10px] text-neutral-500 font-semibold pt-2 border-t border-neutral-900">
+                        <div className="flex items-center gap-3 text-[11px] text-slate-400 font-medium pt-2 border-t border-slate-100">
                           <span className="flex items-center gap-1">
-                            <Calendar className="h-3.5 w-3.5" /> {formattedDate}
+                            <Calendar className="h-3 w-3" /> {formattedDate}
                           </span>
                           {act.field_name && (
-                            <span className="bg-neutral-900 px-2 py-0.5 rounded border border-neutral-850">
+                            <span className="bg-slate-50 px-2 py-0.5 rounded border border-slate-200 text-slate-600">
                               Field: {act.field_name}
                             </span>
                           )}
@@ -427,112 +418,112 @@ export default function TimelinePage() {
 
       {/* Manual Compose Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-fade-in">
-          <div className="glass border border-neutral-800 rounded-3xl w-full max-w-lg overflow-hidden relative animate-slide-up">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-fade-in">
+          <div className="clean-card bg-white rounded-2xl w-full max-w-lg overflow-hidden relative shadow-2xl">
             
             {/* Header */}
-            <div className="border-b border-neutral-800 p-6 flex justify-between items-center">
+            <div className="border-b border-slate-100 p-5 flex justify-between items-center">
               <div>
-                <h3 className="text-lg font-bold text-white">Log Farm Activity</h3>
-                <p className="text-xs text-neutral-500 mt-0.5">Write a manual entry in your farming diary.</p>
+                <h3 className="text-base font-bold text-slate-900">Log Farm Activity</h3>
+                <p className="text-xs text-slate-500">Record an entry in your digital farm diary.</p>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 rounded-xl text-neutral-500 hover:text-white hover:bg-neutral-900 border border-transparent hover:border-neutral-800 transition-all"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
             {/* Form */}
             <form onSubmit={handleCreateActivity}>
-              <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="p-5 space-y-3 max-h-[60vh] overflow-y-auto">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Activity Type</label>
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Activity Type</label>
                     <select
                       value={newType}
                       onChange={e => setNewType(e.target.value)}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs outline-none focus:bg-white focus:border-emerald-600 transition-colors"
                     >
                       {ACTIVITY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Date</label>
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Date</label>
                     <input
                       type="date"
                       value={newDate}
                       onChange={e => setNewDate(e.target.value)}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs outline-none focus:bg-white focus:border-emerald-600 transition-colors"
                       required
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Title / Subject</label>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Title / Subject</label>
                   <input
                     type="text"
                     value={newTitle}
                     onChange={e => setNewTitle(e.target.value)}
                     placeholder="e.g. Sowed PR-126 Basmati Seeds"
-                    className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs placeholder-neutral-600 outline-none focus:border-primary transition-colors"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs placeholder-slate-400 outline-none focus:bg-white focus:border-emerald-600 transition-colors"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Details / Description</label>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Details / Description</label>
                   <textarea
                     value={newDescription}
                     onChange={e => setNewDescription(e.target.value)}
                     placeholder="Describe inputs used, quantities, labor hours, observations, etc."
-                    rows={4}
-                    className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs placeholder-neutral-600 outline-none focus:border-primary transition-colors resize-none"
+                    rows={3}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs placeholder-slate-400 outline-none focus:bg-white focus:border-emerald-600 transition-colors resize-none"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Crop Context (optional)</label>
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Crop (optional)</label>
                     <select
                       value={newCrop}
                       onChange={e => setNewCrop(e.target.value)}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs outline-none focus:bg-white focus:border-emerald-600 transition-colors"
                     >
                       <option value="">None</option>
                       {CROPS.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Field / Node Name (optional)</label>
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Field Name (optional)</label>
                     <input
                       type="text"
                       value={newFieldName}
                       onChange={e => setNewFieldName(e.target.value)}
-                      placeholder="e.g. Field North 2"
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs placeholder-neutral-600 outline-none focus:border-primary transition-colors"
+                      placeholder="e.g. North Plot"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs placeholder-slate-400 outline-none focus:bg-white focus:border-emerald-600 transition-colors"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Footer */}
-              <div className="border-t border-neutral-800 p-6 flex gap-4">
+              <div className="border-t border-slate-100 p-4 flex gap-3 bg-slate-50">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 bg-neutral-900 hover:bg-neutral-850 border border-neutral-850 text-neutral-200 font-semibold py-3 rounded-xl text-xs transition-colors"
+                  className="flex-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-xs transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-[2] bg-primary hover:bg-primary-600 disabled:opacity-50 text-neutral-950 font-bold py-3 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(0,200,117,0.15)]"
+                  className="flex-[2] bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm"
                 >
-                  {isSubmitting ? <><RefreshCw className="h-4 w-4 animate-spin" />Saving...</> : "Save Log Entry"}
+                  {isSubmitting ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" />Saving...</> : "Save Log Entry"}
                 </button>
               </div>
             </form>

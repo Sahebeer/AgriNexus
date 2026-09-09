@@ -1,5 +1,6 @@
+import logging
 from typing import Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, File, Form, UploadFile, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -9,6 +10,8 @@ from app.models.user import User
 from app.models.scan import ScanLog
 from app.services.vision.pipeline import analyze_crop_image
 from app.services.activity_logger import log_activity
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -24,7 +27,8 @@ async def analyze_crop(
     db: Session = Depends(get_db),
     image: Optional[UploadFile] = File(None),
     file: Optional[UploadFile] = File(None),
-    current_user: User = Depends(deps.get_current_active_user),
+    crop_hint: Optional[str] = Form(None),
+    current_user: Optional[User] = Depends(deps.get_current_active_user_optional if hasattr(deps, 'get_current_active_user_optional') else deps.get_current_active_user),
 ) -> Any:
     """
     Unified Multi-Stage Agricultural Computer Vision Pipeline.
@@ -41,60 +45,65 @@ async def analyze_crop(
             detail={"error": "INVALID_IMAGE", "message": "No image file provided in upload."}
         )
 
-    # 1. Enforce MIME file constraints
-    allowed_types = ["image/jpeg", "image/png", "image/jpg", "image/webp"]
-    if upload.content_type and upload.content_type not in allowed_types:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": "INVALID_IMAGE", "message": "Invalid file format. Please upload a JPEG, PNG, or WebP image."}
-        )
-
     try:
         file_bytes = await upload.read()
-
-        # Enforce size constraint (5MB max)
-        if len(file_bytes) > 5 * 1024 * 1024:
+        if not file_bytes or len(file_bytes) == 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"error": "IMAGE_TOO_LARGE", "message": "File size exceeds the 5MB limit."}
+                detail={"error": "INVALID_IMAGE", "message": "Uploaded image file is empty."}
+            )
+
+        # Enforce size constraint (10MB max)
+        if len(file_bytes) > 10 * 1024 * 1024:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error": "IMAGE_TOO_LARGE", "message": "File size exceeds the 10MB limit."}
             )
 
         # 2. Invoke multi-stage pipeline
-        result = analyze_crop_image(file_bytes)
+        result = analyze_crop_image(file_bytes, crop_hint=crop_hint)
 
-        # 3. Log to ScanLog database table
-        disease_id = result.get("disease") or "unresolved"
+        # Normalize fields for legacy & modern consumers
+        status_label = result.get("status", "diagnosed")
+        is_non_crop = status_label == "crop_not_detected"
+        disease_id = result.get("disease")
         confidence = result.get("disease_confidence") or result.get("crop_confidence") or 0.0
+        crop_label = result.get("crop") or "Vegetation"
+        disease_name = result.get("disease_name")
 
-        db_log = ScanLog(
-            user_id=current_user.id,
-            image_path=upload.filename,
-            predicted_disease_id=disease_id,
-            confidence=float(confidence),
-            user_feedback_correct=None
-        )
-        db.add(db_log)
-        db.commit()
-        db.refresh(db_log)
+        # A rejected image must never be normalized into a misleading
+        # "healthy" diagnosis for legacy clients or scan history.
+        result["name"] = disease_name if not is_non_crop else None
+        result["disease_id"] = disease_id if not is_non_crop else None
+        result["confidence"] = confidence if not is_non_crop else 0.0
 
-        result["scan_log_id"] = db_log.id
+        # 3. Log to ScanLog database table if user is authenticated
+        if current_user and not is_non_crop:
+            try:
+                db_log = ScanLog(
+                    user_id=current_user.id,
+                    image_path=upload.filename or "leaf_scan.jpg",
+                    predicted_disease_id=disease_id,
+                    confidence=float(confidence),
+                    user_feedback_correct=None
+                )
+                db.add(db_log)
+                db.commit()
+                db.refresh(db_log)
+                result["scan_log_id"] = db_log.id
 
-        # 4. Auto-log to farm activity diary
-        try:
-            status_label = result.get("status", "scanned")
-            crop_label = result.get("crop") or "Vegetation"
-            disease_name = result.get("disease_name") or result.get("disease") or "Uncertain"
-            log_activity(
-                db,
-                user_id=current_user.id,
-                activity_type="Vision Scan",
-                title=f"Crop Scan: {crop_label.title()} ({status_label})",
-                description=f"Analysis result: {result.get('message')}",
-                source="auto",
-                metadata={"scan_log_id": db_log.id, "status": status_label, "confidence": round(confidence, 4)},
-            )
-        except Exception:
-            pass  # Never let diary logging interrupt scan response
+                # Auto-log to farm activity diary
+                log_activity(
+                    db,
+                    user_id=current_user.id,
+                    activity_type="Vision Scan",
+                    title=f"Crop Scan: {crop_label.title()} ({status_label})",
+                    description=f"Analysis result: {result.get('message')}",
+                    source="auto",
+                    metadata={"scan_log_id": db_log.id, "status": status_label, "confidence": round(confidence, 4)},
+                )
+            except Exception as e:
+                logger.warning(f"ScanLog/ActivityLog auto-logging deferred: {e}")
 
         return result
 
@@ -106,31 +115,41 @@ async def analyze_crop(
             detail={"error": "INVALID_IMAGE", "message": str(ve)}
         )
     except Exception as e:
+        logger.error(f"Error during vision pipeline execution: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": "MODEL_UNAVAILABLE", "message": f"An error occurred during model inference: {str(e)}"}
         )
 
 
+@router.post("/predict", status_code=status.HTTP_200_OK)
+async def predict_leaf_disease(
+    *,
+    db: Session = Depends(get_db),
+    file: Optional[UploadFile] = File(None),
+    image: Optional[UploadFile] = File(None),
+    crop_hint: Optional[str] = Form(None),
+    current_user: Optional[User] = Depends(deps.get_current_active_user_optional if hasattr(deps, 'get_current_active_user_optional') else deps.get_current_active_user),
+) -> Any:
+    """
+    Direct predict endpoint used by UI components.
+    """
+    return await analyze_crop(db=db, file=file, image=image, crop_hint=crop_hint, current_user=current_user)
+
+
 @router.post("/detect", status_code=status.HTTP_200_OK)
 async def detect_leaf_disease(
     *,
     db: Session = Depends(get_db),
-    file: UploadFile = File(...),
-    current_user: User = Depends(deps.get_current_active_user),
+    file: Optional[UploadFile] = File(None),
+    image: Optional[UploadFile] = File(None),
+    crop_hint: Optional[str] = Form(None),
+    current_user: Optional[User] = Depends(deps.get_current_active_user_optional if hasattr(deps, 'get_current_active_user_optional') else deps.get_current_active_user),
 ) -> Any:
     """
     Backward-compatible disease detection endpoint.
-    Runs the multi-stage vision pipeline and formats response for legacy UI components.
     """
-    res = await analyze_crop(db=db, file=file, current_user=current_user)
-    # Adapt to legacy schema expectations
-    res["name"] = res.get("disease_name") or (f"{res.get('crop', '').title()} Foliage" if res.get("crop") else "Unresolved")
-    res["disease_id"] = res.get("disease") or "inconclusive"
-    res["confidence"] = res.get("disease_confidence") or res.get("crop_confidence") or 0.0
-    res["type"] = "Normal Health" if res.get("status") == "healthy" else ("Pathogen" if res.get("status") == "diagnosed" else "Unresolved")
-    res["severity"] = "None" if res.get("status") == "healthy" else ("Medium" if res.get("status") == "diagnosed" else "None")
-    return res
+    return await analyze_crop(db=db, file=file, image=image, crop_hint=crop_hint, current_user=current_user)
 
 
 @router.post("/feedback/{scan_log_id}", status_code=status.HTTP_200_OK)

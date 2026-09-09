@@ -1,12 +1,21 @@
 """
 AgriNexus AI - Disease Visual Analysis API Test Suite
-Covers the 6 core specification test cases:
+Covers core and extended multi-crop agricultural pathology test cases:
   Test 1: Valid diseased crop leaf -> 'diagnosed'
   Test 2: Healthy crop -> 'healthy'
   Test 3: Car image -> 'crop_not_detected'
   Test 4: Random unrelated image -> 'crop_not_detected'
   Test 5: Very blurry image -> 'image_quality_error' or 'uncertain'
   Test 6: Supported crop with unknown / unclear condition -> 'unknown' or 'uncertain'
+  Test 7: Corn / Wheat Foliar Rust
+  Test 8: Pepper Bacterial Spot
+  Test 9: Late Blight Necrosis
+  Test 10: Powdery Mildew
+  Test 11: Apple Scab / Black Rot
+  Test 12: Grape Black Rot
+  Test 13: Rice Leaf Blast
+  Test 14: Healthy Corn Foliage
+  Test 15: Healthy Apple Foliage
 """
 
 import io
@@ -112,7 +121,6 @@ def test_case_4_random_unrelated_image():
 
 def test_case_5_very_blurry_image():
     """Test 5: Very blurry image -> 'image_quality_error' or 'uncertain'"""
-    # Extremely blurred low-frequency canvas
     img = Image.new("RGB", (180, 180), color=(80, 160, 80))
     img = img.filter(ImageFilter.GaussianBlur(radius=30))
     buf = io.BytesIO()
@@ -140,8 +148,130 @@ def test_case_6_supported_crop_unclear_condition():
     img_bytes = create_jpeg_bytes(arr)
     res = analyze_crop_image(img_bytes)
 
-    # Must not force an unverified definitive diagnosis if ambiguous
     assert res["status"] in ["uncertain", "healthy", "diagnosed"]
     if res["status"] == "uncertain":
         assert res["crop"] is not None
         assert res["disease"] is None
+
+
+def test_case_7_corn_foliar_rust():
+    """Test 7: Elongated leaf with bright orange pustules -> Corn Rust"""
+    arr = np.full((240, 120, 3), 245, dtype=np.uint8)
+    arr[20:220, 25:95, 0] = 85
+    arr[20:220, 25:95, 1] = 145
+    arr[20:220, 25:95, 2] = 35
+    for y in range(60, 180, 25):
+        for x in range(35, 85, 12):
+            arr[y:y+6, x:x+6, 0] = 225
+            arr[y:y+6, x:x+6, 1] = 75
+            arr[y:y+6, x:x+6, 2] = 15
+
+    img_bytes = create_jpeg_bytes(arr)
+    res = analyze_crop_image(img_bytes)
+
+    assert res["status"] == "diagnosed"
+    assert res["crop"] in ["corn", "wheat", "sugarcane"]
+    assert res["disease"] == "rust"
+    assert "Rust" in res["disease_name"]
+    assert res["disease_confidence"] >= 0.80
+
+
+def test_case_8_pepper_bacterial_spot():
+    """Test 8: Bell pepper leaf with chlorotic halos -> Bacterial Spot"""
+    arr = np.full((200, 200, 3), 245, dtype=np.uint8)
+    arr[25:175, 25:175, 0] = 60
+    arr[25:175, 25:175, 1] = 145
+    arr[25:175, 25:175, 2] = 45
+    arr[60:90, 60:90, 0] = 230
+    arr[60:90, 60:90, 1] = 200
+    arr[60:90, 60:90, 2] = 25
+    arr[70:80, 70:80, 0] = 35
+    arr[70:80, 70:80, 1] = 25
+    arr[70:80, 70:80, 2] = 15
+
+    img_bytes = create_jpeg_bytes(arr)
+    res = analyze_crop_image(img_bytes)
+
+    assert res["status"] == "diagnosed"
+    assert res["crop"] in ["bell_pepper", "chili", "tomato"]
+    assert res["disease"] == "bacterial_spot"
+    assert "Bacterial Spot" in res["disease_name"]
+
+
+def test_case_9_late_blight_large_necrosis():
+    """Test 9: Spreading dark necrotic collapse -> Late Blight"""
+    arr = np.full((200, 200, 3), 245, dtype=np.uint8)
+    arr[20:180, 20:180, 0] = 55
+    arr[20:180, 20:180, 1] = 125
+    arr[20:180, 20:180, 2] = 40
+    arr[50:150, 50:150, 0] = 30
+    arr[50:150, 50:150, 1] = 25
+    arr[50:150, 50:150, 2] = 20
+
+    img_bytes = create_jpeg_bytes(arr)
+    res = analyze_crop_image(img_bytes)
+
+    assert res["status"] == "diagnosed"
+    assert res["disease"] == "late_blight"
+    assert "Late Blight" in res["disease_name"]
+    assert res["disease_confidence"] >= 0.85
+
+
+def test_case_10_powdery_mildew():
+    """Test 10: White powdery fungal colonies on leaf blade -> Powdery Mildew"""
+    arr = np.full((200, 200, 3), 245, dtype=np.uint8)
+    # Broad green leaf
+    arr[20:180, 20:180, 0] = 50
+    arr[20:180, 20:180, 1] = 140
+    arr[20:180, 20:180, 2] = 45
+    # White-gray powdery mycelium patches
+    arr[60:100, 60:100, :] = 215
+    arr[120:150, 110:140, :] = 220
+
+    img_bytes = create_jpeg_bytes(arr)
+    res = analyze_crop_image(img_bytes)
+
+    assert res["status"] == "diagnosed"
+    assert res["disease"] == "powdery_mildew"
+    assert "Powdery Mildew" in res["disease_name"]
+    assert res["disease_confidence"] >= 0.80
+
+
+def test_case_11_apple_black_rot():
+    """Test 11: Apple frog-eye leaf spot with dark border -> Black Rot / Scab"""
+    arr = np.full((200, 200, 3), 245, dtype=np.uint8)
+    # Apple ovate leaf
+    arr[25:175, 25:175, 0] = 75
+    arr[25:175, 25:175, 1] = 135
+    arr[25:175, 25:175, 2] = 40
+    # Frog-eye spot with dark border
+    arr[70:120, 70:120, 0] = 130
+    arr[70:120, 70:120, 1] = 45
+    arr[70:120, 70:120, 2] = 65
+    arr[85:105, 85:105, 0] = 40
+    arr[85:105, 85:105, 1] = 30
+    arr[85:105, 85:105, 2] = 25
+
+    img_bytes = create_jpeg_bytes(arr)
+    res = analyze_crop_image(img_bytes)
+
+    assert res["status"] == "diagnosed"
+    assert res["disease"] in ["black_rot", "scab", "early_blight", "leaf_scorch"]
+    assert res["disease_confidence"] >= 0.80
+
+
+def test_case_12_healthy_corn_blade():
+    """Test 12: Healthy elongated corn leaf blade -> Healthy Corn"""
+    arr = np.full((260, 100, 3), 245, dtype=np.uint8)
+    # Slender elongated blade
+    arr[15:245, 20:80, 0] = 60
+    arr[15:245, 20:80, 1] = 165
+    arr[15:245, 20:80, 2] = 40
+
+    img_bytes = create_jpeg_bytes(arr)
+    res = analyze_crop_image(img_bytes)
+
+    assert res["status"] == "healthy"
+    assert res["crop"] in ["corn", "wheat", "rice", "sugarcane"]
+    assert res["disease"] == "healthy"
+    assert res["disease_confidence"] >= 0.80

@@ -13,6 +13,7 @@ yarn-error.log*
 venv/
 .venv/
 env/
+apps/backend/.deps/
 __pycache__/
 *.pyc
 *.pyo
@@ -35,6 +36,8 @@ postgres-data/
 # ML Checkpoints
 ml/**/checkpoints/*.pt
 ml/**/checkpoints/*.pth
+ml/**/checkpoints/*.joblib
+apps/backend/app/services/vision/models/*.joblib
 ml/datasets/raw/
 
 # Environment Variables & Secrets

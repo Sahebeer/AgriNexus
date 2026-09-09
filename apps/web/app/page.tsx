@@ -1,307 +1,451 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { 
-  Sprout, 
-  ShieldAlert, 
-  CloudSun, 
-  TrendingUp, 
-  Compass, 
-  Coins, 
-  Bot, 
-  ArrowRight, 
+import { useAuthStore } from "../store/authStore";
+import { useToastStore } from "../store/toastStore";
+import AuthModal from "../components/auth/AuthModal";
+
+// Modular Views
+import OverviewModule from "../components/modules/OverviewModule";
+import AdvisorModule from "../components/modules/AdvisorModule";
+import DiseaseModule from "../components/modules/DiseaseModule";
+import WeatherModule from "../components/modules/WeatherModule";
+import MandiModule from "../components/modules/MandiModule";
+import PricesModule from "../components/modules/PricesModule";
+import SchemesModule from "../components/modules/SchemesModule";
+import TimelineModule from "../components/modules/TimelineModule";
+import ShoppingModule from "../components/modules/ShoppingModule";
+import CalendarModule from "../components/modules/CalendarModule";
+import ExpensesModule from "../components/modules/ExpensesModule";
+import ProfileModule from "../components/modules/ProfileModule";
+import SatelliteModule from "../components/modules/SatelliteModule";
+
+import {
+  Sprout,
+  LayoutDashboard,
+  Sparkles,
+  Scan,
+  CloudSun,
+  TrendingUp,
+  Coins,
+  ShieldCheck,
+  CalendarDays,
+  Calculator,
   Activity,
-  CheckCircle,
-  Database,
+  FileText,
+  Compass,
+  Satellite,
+  User,
+  LogOut,
+  LogIn,
+  Search,
+  ChevronRight,
+  Menu,
+  X,
+  Bell,
   Layers,
-  Map
+  Clock,
+  Shield
 } from "lucide-react";
 
-export default function Home() {
-  const [activeTab, setActiveTab] = useState("disease");
+type ModuleKey =
+  | "overview"
+  | "advisor"
+  | "disease"
+  | "weather"
+  | "prices"
+  | "mandi"
+  | "schemes"
+  | "calendar"
+  | "shopping"
+  | "expenses"
+  | "timeline"
+  | "profile"
+  | "satellite";
 
-  const handleNavClick = (id: string, tabId?: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
+interface NavItem {
+  id: ModuleKey;
+  label: string;
+  icon: React.FC<any>;
+  badge?: string;
+  category: "core" | "insights" | "operations";
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { id: "overview", label: "Dashboard Hub", icon: LayoutDashboard, category: "core" },
+  { id: "advisor", label: "AI Agronomist", icon: Sparkles, category: "core" },
+  { id: "disease", label: "Disease Scanner", icon: Scan, category: "core" },
+  { id: "satellite", label: "Satellite Earth AI", icon: Satellite, category: "core" },
+  
+  { id: "weather", label: "Microclimate Outlook", icon: CloudSun, category: "insights" },
+  { id: "prices", label: "Commodity Rates & MSP", icon: TrendingUp, category: "insights" },
+  { id: "mandi", label: "Trade Marketplace", icon: Coins, category: "insights" },
+  { id: "schemes", label: "Govt Subsidies", icon: ShieldCheck, category: "insights" },
+
+  { id: "calendar", label: "Sowing Schedule", icon: CalendarDays, category: "operations" },
+  { id: "shopping", label: "Inputs Calculator", icon: Calculator, category: "operations" },
+  { id: "expenses", label: "Expense Forecaster", icon: Activity, category: "operations" },
+  { id: "timeline", label: "Farm Diary Log", icon: FileText, category: "operations" },
+  { id: "profile", label: "Soil & Landholdings", icon: Compass, category: "operations" },
+];
+
+function MainConsoleContent() {
+  const searchParams = useSearchParams();
+  const { user, isAuthenticated, logout } = useAuthStore();
+  const { showToast } = useToastStore();
+
+  const [activeTab, setActiveTab] = useState<ModuleKey>("overview");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [currentTime, setCurrentTime] = useState<string>("");
+
+  // Sync tab from URL param if provided
+  useEffect(() => {
+    const tabParam = searchParams.get("tab") as ModuleKey | null;
+    if (tabParam && NAV_ITEMS.some((n) => n.id === tabParam)) {
+      setActiveTab(tabParam);
     }
-    if (tabId) {
-      setActiveTab(tabId);
+  }, [searchParams]);
+
+  // Live digital clock in header
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setCurrentTime(
+        now.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+        })
+      );
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleTabChange = (key: ModuleKey) => {
+    setActiveTab(key);
+    setSidebarOpen(false);
+    if (typeof window !== "undefined") {
+      const newUrl = key === "overview" ? "/" : `/?tab=${key}`;
+      window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, "", newUrl);
     }
   };
 
-  const modules = [
-    {
-      id: "disease",
-      title: "Disease Detection",
-      icon: ShieldAlert,
-      desc: "Instant leaf analysis using PyTorch deep neural networks. Detects pathogens, evaluates severity, and outlines customized treatments.",
-      stat: "98.7% Model Accuracy"
-    },
-    {
-      id: "recommendation",
-      title: "Smart Crop Optimizer",
-      icon: Sprout,
-      desc: "XGBoost classifier analyzing soil structure, pH, historical yield metrics, and long-range weather data to recommend optimal crops.",
-      stat: "15% Yield Increase Avg"
-    },
-    {
-      id: "schemes",
-      title: "Government Schemes",
-      icon: Coins,
-      desc: "Algorithmic eligibility matching engine evaluating landholding limits, crop selections, and geography to secure central and state subsidies.",
-      stat: "45+ Active Schemes"
-    },
-    {
-      id: "weather",
-      title: "Weather Intelligence",
-      icon: CloudSun,
-      desc: "Microclimate forecasts integrated with warning triggers for frost, localized storms, soil saturation thresholds, and extreme heat cycles.",
-      stat: "Hour-by-hour Alerts"
-    }
-  ];
+  const handleSignOut = () => {
+    logout();
+    showToast("Signed out of operator console", "info");
+  };
 
   return (
-    <div className="min-h-screen flex flex-col font-sans">
-      {/* Header */}
-      <header className="glass fixed top-0 w-full z-50 border-b border-neutral-800">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-primary/10 p-2 rounded-xl border border-primary/20">
-              <Sprout className="h-6 w-6 text-primary" />
-            </div>
-            <span className="font-display font-bold text-xl tracking-tight bg-gradient-to-r from-neutral-50 to-neutral-400 bg-clip-text text-transparent">
-              AgriNexus <span className="text-primary">AI</span>
-            </span>
-          </div>
-
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-neutral-400">
-            <button onClick={() => handleNavClick("features")} className="hover:text-primary transition-colors">OS Modules</button>
-            <button onClick={() => handleNavClick("platform", "disease")} className="hover:text-primary transition-colors">AI Core</button>
-            <button onClick={() => handleNavClick("platform", "schemes")} className="hover:text-primary transition-colors">Schemes</button>
-            <button onClick={() => handleNavClick("docs")} className="hover:text-primary transition-colors">System Docs</button>
-          </nav>
-
-          <div className="flex items-center gap-4">
-            <Link href="/login" className="text-sm font-medium text-neutral-300 hover:text-white transition-colors">
-              Sign In
-            </Link>
-            <Link href="/dashboard" className="bg-primary hover:bg-primary-600 text-neutral-950 font-semibold px-4 py-2 rounded-xl text-sm transition-all duration-300 shadow-[0_0_20px_rgba(0,200,117,0.2)] hover:shadow-[0_0_25px_rgba(0,200,117,0.35)] flex items-center gap-1.5 group">
-              Launch Farm Console
-              <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* Hero Section */}
-      <main className="flex-1 pt-32">
-        <div className="max-w-7xl mx-auto px-6 text-center relative">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass border border-neutral-800 text-xs font-semibold text-neutral-300 mb-8 animate-fade-in">
-            <span className="flex h-2.5 w-2.5 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
-            </span>
-            AgriNexus AI v1.0.0 Production Release
-          </div>
-
-          {/* Heading */}
-          <h1 className="font-display text-5xl md:text-7xl font-extrabold tracking-tight max-w-4xl mx-auto leading-[1.1] mb-6 animate-slide-up">
-            The Smart Farm Operating System <span className="bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">Powered by AI</span>
-          </h1>
-
-          {/* Subtitle */}
-          <p className="text-neutral-400 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed animate-slide-up" style={{ animationDelay: "100ms" }}>
-            Unifying precision agriculture, real-time disease detection, localized microclimate analysis, and government subsidy routing in a secure, production-grade farm engine.
-          </p>
-
-          {/* Call to Actions */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20 animate-slide-up" style={{ animationDelay: "200ms" }}>
-            <Link href="/register" className="w-full sm:w-auto bg-primary hover:bg-primary-600 text-neutral-950 font-bold px-8 py-4 rounded-2xl transition-all duration-300 shadow-[0_0_30px_rgba(0,200,117,0.25)] flex items-center justify-center gap-2 group">
-              Start Free Trial
-              <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
-            <Link href="/register" className="w-full sm:w-auto glass glass-hover text-neutral-200 font-semibold px-8 py-4 rounded-2xl transition-all flex items-center justify-center gap-2">
-              Book Architecture Demo
-            </Link>
-          </div>
-
-          {/* Mockup Showcase Panel */}
-          <div id="platform" className="relative glass rounded-3xl p-2 border border-neutral-800 shadow-2xl max-w-5xl mx-auto overflow-hidden animate-slide-up" style={{ animationDelay: "300ms" }}>
-            <div className="glass bg-neutral-900/90 rounded-[22px] border border-neutral-800/80 p-6 flex flex-col md:flex-row gap-6">
-              {/* Mockup Sidebar */}
-              <div className="w-full md:w-64 flex flex-col gap-2 text-left">
-                <div className="text-xs font-bold text-neutral-400 uppercase tracking-widest px-3 mb-2">OS Modules</div>
-                {modules.map((m) => {
-                  const Icon = m.icon;
-                  return (
-                    <button
-                      key={m.id}
-                      onClick={() => setActiveTab(m.id)}
-                      className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 text-left border ${
-                        activeTab === m.id
-                          ? "bg-neutral-800/70 border-primary/30 text-white shadow-sm"
-                          : "border-transparent text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/30"
-                      }`}
-                    >
-                      <Icon className={`h-5 w-5 ${activeTab === m.id ? "text-primary" : ""}`} />
-                      <span className="font-semibold text-sm">{m.title}</span>
-                    </button>
-                  );
-                })}
+    <div className="min-h-screen bg-slate-50/50 flex text-slate-900 font-sans antialiased overflow-x-hidden">
+      
+      {/* ─── 1. Left Navigation Sidebar ───────────────────────────────────── */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-300 lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex flex-col flex-1 overflow-y-auto">
+          {/* Brand Header */}
+          <div className="h-16 px-6 border-b border-slate-100 flex items-center justify-between">
+            <button
+              onClick={() => handleTabChange("overview")}
+              className="flex items-center gap-2.5 text-left group"
+            >
+              <div className="h-9 w-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
+                <Sprout className="h-5 w-5" />
               </div>
-
-              {/* Mockup Content Panel */}
-              <div className="flex-1 glass bg-neutral-950/70 border border-neutral-800/50 rounded-2xl p-6 text-left flex flex-col justify-between min-h-[300px]">
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs font-bold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1 rounded-md border border-primary/20">
-                      {modules.find(m => m.id === activeTab)?.stat}
-                    </span>
-                    <div className="flex items-center gap-1.5 text-xs text-neutral-400">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      Core Engine Active
-                    </div>
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-3">
-                    {modules.find(m => m.id === activeTab)?.title}
-                  </h3>
-                  <p className="text-neutral-400 leading-relaxed mb-6 text-sm md:text-base">
-                    {modules.find(m => m.id === activeTab)?.desc}
-                  </p>
-                </div>
-
-                {/* Internal Mock Graphic elements to represent a high-end dashboard */}
-                <div className="border-t border-neutral-800/80 pt-6 flex flex-wrap gap-4 items-center justify-between">
-                  <div className="flex gap-4">
-                    <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
-                      <Database className="h-4 w-4 text-neutral-500" />
-                      PostgreSQL Connection OK
-                    </div>
-                    <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
-                      <Activity className="h-4 w-4 text-primary" />
-                      FastAPI Latency: 24ms
-                    </div>
-                  </div>
-                  <button className="text-xs font-bold text-primary hover:text-white transition-colors flex items-center gap-1">
-                    Explore API Specs
-                    <ArrowRight className="h-3 w-3" />
-                  </button>
-                </div>
+              <div>
+                <span className="font-extrabold text-slate-900 text-sm tracking-tight block">
+                  AgriNexus <span className="text-emerald-600">AI</span>
+                </span>
+                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">
+                  Farm OS • Single Hub
+                </span>
               </div>
-            </div>
+            </button>
+
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
-        </div>
 
-        {/* Feature Grid */}
-        <section id="features" className="py-28 relative">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center max-w-2xl mx-auto mb-16">
-              <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
-                Fully Consolidated Farm Operations
-              </h2>
-              <p className="text-neutral-400">
-                Replace fragmented agricultural tools with a single unified, secure enterprise operating system.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              {/* Feature 1 */}
-              <div className="glass glass-hover p-8 rounded-2xl border border-neutral-800 transition-all duration-300">
-                <div className="bg-primary/10 border border-primary/20 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
-                  <Bot className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">AgriNexus AI Copilot</h3>
-                <p className="text-neutral-400 text-sm leading-relaxed">
-                  Interactive RAG-enabled chatbot designed to assist in scheduling, treatment steps, and financial subsidy navigation.
-                </p>
-              </div>
-
-              {/* Feature 2 */}
-              <div className="glass glass-hover p-8 rounded-2xl border border-neutral-800 transition-all duration-300">
-                <div className="bg-accent-blue/10 border border-accent-blue/20 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
-                  <Layers className="h-6 w-6 text-accent-blue" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">Monorepo Scalability</h3>
-                <p className="text-neutral-400 text-sm leading-relaxed">
-                  Clean architecture separation of client and service domains. Fully containerized development stack.
-                </p>
-              </div>
-
-              {/* Feature 3 */}
-              <div className="glass glass-hover p-8 rounded-2xl border border-neutral-800 transition-all duration-300">
-                <div className="bg-accent-amber/10 border border-accent-amber/20 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
-                  <Map className="h-6 w-6 text-accent-amber" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">Geospatial Targeting</h3>
-                <p className="text-neutral-400 text-sm leading-relaxed">
-                  Contextualize farming inputs with geography, validating regional soil reports alongside global satellite overlays.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-        {/* System Docs Section */}
-        <section id="docs" className="py-24 border-t border-neutral-900 bg-neutral-950/40 relative">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-              <div className="lg:col-span-5 space-y-6 text-left">
-                <span className="text-xs font-bold text-primary uppercase tracking-widest">Developer Reference</span>
-                <h2 className="font-display text-3xl md:text-4xl font-bold text-white tracking-tight">
-                  AgriNexus API & System Docs
-                </h2>
-                <p className="text-neutral-400 text-sm md:text-base leading-relaxed">
-                  Connect third-party IoT soil sensors, custom fertilizer channels, or export disease diagnostic logs. Access complete FastAPI OpenAPI payloads with a single credential.
-                </p>
-                <div className="flex gap-4">
-                  <a 
-                    href="http://localhost:8000/docs" 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="bg-neutral-900 hover:bg-neutral-850 border border-neutral-800 hover:border-neutral-700 text-white font-semibold px-5 py-2.5 rounded-xl text-xs transition-all flex items-center gap-1.5 group"
+          {/* Navigation Links Grouped */}
+          <div className="p-4 space-y-6 flex-1">
+            
+            {/* Core Intelligence */}
+            <div className="space-y-1">
+              <span className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Intelligence & Diagnostics
+              </span>
+              {NAV_ITEMS.filter((n) => n.category === "core").map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleTabChange(item.id)}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                      isActive
+                        ? "bg-emerald-50 text-emerald-950 font-bold border border-emerald-200 shadow-sm"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    }`}
                   >
-                    API Swagger Guide
-                    <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-                  </a>
-                </div>
-              </div>
-
-              <div className="lg:col-span-7 glass border border-neutral-800 rounded-3xl p-6 md:p-8 text-left bg-neutral-900/40 font-mono text-xs text-neutral-400 space-y-4">
-                <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
-                  <span className="text-neutral-300 font-bold">sensor_ingress_gateway.sh</span>
-                  <span className="text-emerald-400 font-bold">● Active</span>
-                </div>
-                <div className="space-y-2">
-                  <p><span className="text-neutral-500"># Send local soil moisture telemetry payload</span></p>
-                  <p><span className="text-primary">curl</span> -X POST "http://localhost:8000/api/v1/telemetry" \</p>
-                  <p>  -H "Authorization: Bearer $AGRINEXUS_JWT" \</p>
-                  <p>  -H "Content-Type: application/json" \</p>
-                  <p>  {"-d '{\"sensor_id\": \"moisture_field_02\", \"depth_cm\": 15, \"pct\": 42.8}'"}</p>
-                  <p className="text-neutral-500 mt-2">// Response 200 OK</p>
-                  <p className="text-emerald-400">{"{\"status\": \"Ingested\", \"warning\": null, \"irrigation_required\": false}"}</p>
-                </div>
-              </div>
+                    <div className="flex items-center gap-3">
+                      <Icon className={`h-4 w-4 ${isActive ? "text-emerald-700" : "text-slate-400"}`} />
+                      <span>{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
+                        isActive ? "bg-emerald-200/80 text-emerald-900" : "bg-slate-100 text-slate-500"
+                      }`}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
-          </div>
-        </section>
-      </main>
 
-      {/* Footer */}
-      <footer className="border-t border-neutral-900 bg-neutral-950 py-12 text-sm text-neutral-500">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Sprout className="h-5 w-5 text-primary" />
-            <span className="font-bold text-white">AgriNexus AI</span>
-          </div>
-          <p>© 2026 AgriNexus AI Inc. All rights reserved. Professional graduation project.</p>
-          <div className="flex gap-6">
-            <Link href="/api-policy" className="hover:text-neutral-300">API Policy</Link>
-            <Link href="/terms" className="hover:text-neutral-300">Terms of Service</Link>
+            {/* Markets & Economics */}
+            <div className="space-y-1">
+              <span className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Markets & Climate
+              </span>
+              {NAV_ITEMS.filter((n) => n.category === "insights").map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleTabChange(item.id)}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                      isActive
+                        ? "bg-emerald-50 text-emerald-950 font-bold border border-emerald-200 shadow-sm"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className={`h-4 w-4 ${isActive ? "text-emerald-700" : "text-slate-400"}`} />
+                      <span>{item.label}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Operations */}
+            <div className="space-y-1">
+              <span className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Farm Management
+              </span>
+              {NAV_ITEMS.filter((n) => n.category === "operations").map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleTabChange(item.id)}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                      isActive
+                        ? "bg-emerald-50 text-emerald-950 font-bold border border-emerald-200 shadow-sm"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className={`h-4 w-4 ${isActive ? "text-emerald-700" : "text-slate-400"}`} />
+                      <span>{item.label}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
           </div>
         </div>
-      </footer>
+
+        {/* Sidebar Footer: User Card & Admin Entry */}
+        <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-2.5">
+          {isAuthenticated ? (
+            <div className="flex items-center justify-between">
+              <div 
+                onClick={() => handleTabChange("profile")}
+                className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
+              >
+                <div className="h-8 w-8 rounded-xl bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-800 font-bold text-xs">
+                  {user?.full_name ? user.full_name.charAt(0).toUpperCase() : "O"}
+                </div>
+                <div className="text-left">
+                  <span className="text-xs font-bold text-slate-900 block truncate max-w-[100px]">
+                    {user?.full_name || "Operator"}
+                  </span>
+                  <span className="text-[10px] text-slate-500 block truncate max-w-[100px]">
+                    {user?.state || "Punjab"}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={handleSignOut}
+                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                title="Sign Out"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAuthModalOpen(true)}
+              className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm"
+            >
+              <LogIn className="h-3.5 w-3.5" />
+              <span>Operator Sign In</span>
+            </button>
+          )}
+
+          <Link
+            href="/admin/login"
+            className="w-full py-1.5 px-3 rounded-xl bg-amber-50/80 hover:bg-amber-100 border border-amber-200 text-amber-900 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+          >
+            <ShieldCheck className="h-3.5 w-3.5 text-amber-700" />
+            <span>Admin Demo Portal</span>
+          </Link>
+        </div>
+      </aside>
+
+      {/* Backdrop overlay for mobile sidebar */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-30 lg:hidden"
+        />
+      )}
+
+      {/* ─── 2. Main Workspace Layout ─────────────────────────────────────── */}
+      <div className="flex-1 lg:pl-64 flex flex-col min-h-screen">
+        
+        {/* Top Workspace Header Bar */}
+        <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-200 h-16 px-4 md:px-8 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-slate-200"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+
+            {/* Breadcrumb Module Title */}
+            <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500">
+              <button 
+                onClick={() => handleTabChange("overview")}
+                className="hover:text-slate-900"
+              >
+                Console
+              </button>
+              <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+              <span className="text-slate-900 font-bold">
+                {NAV_ITEMS.find((n) => n.id === activeTab)?.label || "Dashboard"}
+              </span>
+            </div>
+          </div>
+
+          {/* Quick Right Shortcuts */}
+          <div className="flex items-center gap-3">
+            {/* Real-time Clock */}
+            {currentTime && (
+              <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-600">
+                <Clock className="h-3.5 w-3.5 text-slate-400" />
+                <span>{currentTime}</span>
+              </div>
+            )}
+
+            {/* Quick Module Switcher Pill Buttons */}
+            <button
+              onClick={() => handleTabChange("advisor")}
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                activeTab === "advisor"
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700"
+              }`}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Ask AI</span>
+            </button>
+
+            <button
+              onClick={() => handleTabChange("disease")}
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                activeTab === "disease"
+                  ? "bg-rose-600 text-white shadow-sm"
+                  : "bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700"
+              }`}
+            >
+              <Scan className="h-3.5 w-3.5" />
+              <span>Scan Leaf</span>
+            </button>
+
+            {!isAuthenticated && (
+              <button
+                onClick={() => setAuthModalOpen(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5"
+              >
+                <LogIn className="h-3.5 w-3.5" />
+                <span>Login</span>
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* Dynamic Main Workspace Canvas (One URL: /) */}
+        <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
+          {activeTab === "overview" && (
+            <OverviewModule
+              onNavigate={(k) => handleTabChange(k as ModuleKey)}
+              onOpenAuth={() => setAuthModalOpen(true)}
+            />
+          )}
+          {activeTab === "advisor" && <AdvisorModule onBack={() => handleTabChange("overview")} />}
+          {activeTab === "disease" && <DiseaseModule onBack={() => handleTabChange("overview")} />}
+          {activeTab === "weather" && <WeatherModule onBack={() => handleTabChange("overview")} />}
+          {activeTab === "prices" && <PricesModule onBack={() => handleTabChange("overview")} />}
+          {activeTab === "mandi" && <MandiModule onBack={() => handleTabChange("overview")} />}
+          {activeTab === "schemes" && <SchemesModule onBack={() => handleTabChange("overview")} />}
+          {activeTab === "calendar" && <CalendarModule onBack={() => handleTabChange("overview")} />}
+          {activeTab === "shopping" && <ShoppingModule onBack={() => handleTabChange("overview")} />}
+          {activeTab === "expenses" && <ExpensesModule onBack={() => handleTabChange("overview")} />}
+          {activeTab === "timeline" && <TimelineModule onBack={() => handleTabChange("overview")} />}
+          {activeTab === "profile" && <ProfileModule onBack={() => handleTabChange("overview")} />}
+          {activeTab === "satellite" && <SatelliteModule onBack={() => handleTabChange("overview")} />}
+        </main>
+      </div>
+
+      {/* In-Place Auth Modal */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+      />
+
     </div>
+  );
+}
+
+export default function UnifiedConsolePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500 font-semibold text-xs">
+        <Sprout className="h-6 w-6 text-emerald-600 animate-spin mr-2" />
+        Initializing AgriNexus Single-Hub Farm Console...
+      </div>
+    }>
+      <MainConsoleContent />
+    </Suspense>
   );
 }
