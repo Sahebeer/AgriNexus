@@ -1,0 +1,96 @@
+model:
+  name: "agrinexus_disease_efficientnet"
+  backbone: "efficientnet_b0"
+  num_classes: 15
+  image_size: 224
+  pretrained: true
+
+taxonomy:
+  crops:
+    - "tomato"
+    - "potato"
+    - "bell_pepper"
+    - "wheat"
+    - "corn"
+  classes:
+    - id: "pepper_bacterial_spot"
+      crop: "bell_pepper"
+      disease: "bacterial_spot"
+      label: "Bell Pepper Bacterial Spot"
+    - id: "pepper_healthy"
+      crop: "bell_pepper"
+      disease: "healthy"
+      label: "Bell Pepper Healthy Foliage"
+    - id: "potato_early_blight"
+      crop: "potato"
+      disease: "early_blight"
+      label: "Potato Early Blight"
+    - id: "potato_late_blight"
+      crop: "potato"
+      disease: "late_blight"
+      label: "Potato Late Blight"
+    - id: "potato_healthy"
+      crop: "potato"
+      disease: "healthy"
+      label: "Potato Healthy Foliage"
+    - id: "tomato_bacterial_spot"
+      crop: "tomato"
+      disease: "bacterial_spot"
+      label: "Tomato Bacterial Spot"
+    - id: "tomato_early_blight"
+      crop: "tomato"
+      disease: "early_blight"
+      label: "Tomato Early Blight"
+    - id: "tomato_late_blight"
+      crop: "tomato"
+      disease: "late_blight"
+      label: "Tomato Late Blight"
+    - id: "tomato_leaf_mold"
+      crop: "tomato"
+      disease: "leaf_mold"
+      label: "Tomato Leaf Mold"
+    - id: "tomato_septoria_leaf_spot"
+      crop: "tomato"
+      disease: "septoria_leaf_spot"
+      label: "Tomato Septoria Leaf Spot"
+    - id: "tomato_spider_mites"
+      crop: "tomato"
+      disease: "spider_mites"
+      label: "Tomato Two-Spotted Spider Mite"
+    - id: "tomato_target_spot"
+      crop: "tomato"
+      disease: "target_spot"
+      label: "Tomato Target Spot"
+    - id: "tomato_yellow_leaf_curl"
+      crop: "tomato"
+      disease: "yellow_leaf_curl"
+      label: "Tomato Yellow Leaf Curl Virus"
+    - id: "tomato_mosaic_virus"
+      crop: "tomato"
+      disease: "mosaic_virus"
+      label: "Tomato Mosaic Virus"
+    - id: "tomato_healthy"
+      crop: "tomato"
+      disease: "healthy"
+      label: "Tomato Healthy Foliage"
+
+thresholds:
+  crop_classifier: 0.85
+  disease_classifier: 0.80
+  energy_ood_threshold: -5.0
+  entropy_uncertain_threshold: 1.8
+
+training:
+  phase1_epochs: 10
+  phase2_epochs: 20
+  batch_size: 32
+  head_lr: 0.001
+  backbone_lr: 0.00005
+  label_smoothing: 0.1
+  mixup_alpha: 0.2
+  seed: 42
+
+paths:
+  data_dir: "ml/datasets"
+  checkpoint_dir: "ml/disease/checkpoints"
+  best_model: "ml/disease/checkpoints/leaf_disease_efficientnet.pth"

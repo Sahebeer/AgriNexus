@@ -86,22 +86,22 @@ const SOIL_TEXTURES = ["Sandy", "Clayey", "Loamy", "Silt", "Sandy Loam", "Clay L
 // ─── Helper Functions ──────────────────────────────────────────────────────────
 
 function getPHStatus(val: number) {
-  if (val < 5.5) return { label: "Strongly Acidic", color: "text-red-400 border-red-500/20 bg-red-500/10" };
-  if (val < 6.5) return { label: "Slightly Acidic", color: "text-yellow-400 border-yellow-500/20 bg-yellow-500/10" };
-  if (val <= 7.5) return { label: "Optimal", color: "text-emerald-400 border-emerald-500/20 bg-emerald-500/10" };
-  return { label: "Alkaline", color: "text-blue-400 border-blue-500/20 bg-blue-500/10" };
+  if (val < 5.5) return { label: "Strongly Acidic", color: "text-rose-700 border-rose-200 bg-rose-50" };
+  if (val < 6.5) return { label: "Slightly Acidic", color: "text-amber-700 border-amber-200 bg-amber-50" };
+  if (val <= 7.5) return { label: "Optimal", color: "text-emerald-700 border-emerald-200 bg-emerald-50" };
+  return { label: "Alkaline", color: "text-blue-700 border-blue-200 bg-blue-50" };
 }
 
 function getMoistureStatus(val: number) {
-  if (val < 15) return { label: "Dry Soil (Water Stress)", color: "text-red-400 bg-red-500/10 border-red-500/20" };
-  if (val <= 30) return { label: "Good Moisture", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" };
-  return { label: "Waterlogged", color: "text-blue-400 bg-blue-500/10 border-blue-500/20" };
+  if (val < 15) return { label: "Dry Soil (Water Stress)", color: "text-rose-700 bg-rose-50 border-rose-200" };
+  if (val <= 30) return { label: "Good Moisture", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
+  return { label: "Waterlogged", color: "text-blue-700 bg-blue-50 border-blue-200" };
 }
 
 function getNutrientStatus(val: number, low: number, high: number) {
-  if (val < low) return { label: "Deficient", color: "text-red-400 bg-red-500/10 border-red-500/20" };
-  if (val <= high) return { label: "Optimal", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" };
-  return { label: "High / Excessive", color: "text-amber-400 bg-amber-500/10 border-amber-500/20" };
+  if (val < low) return { label: "Deficient", color: "text-rose-700 bg-rose-50 border-rose-200" };
+  if (val <= high) return { label: "Optimal", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
+  return { label: "High / Excessive", color: "text-amber-700 bg-amber-50 border-amber-200" };
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -157,10 +157,9 @@ export default function ProfilePage() {
   const [soilHumidity, setSoilHumidity] = useState(60);
   const [soilTexture, setSoilTexture] = useState("Loamy");
   const [soilDate, setSoilDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [soilSource, setSoilSource] = useState("manual"); // "manual" | "sensor" | "lab"
+  const [soilSource, setSoilSource] = useState("manual");
   const [isSubmittingSoil, setIsSubmittingSoil] = useState(false);
 
-  // Load profile state
   useEffect(() => {
     if (user) {
       setFullName(user.full_name || "");
@@ -173,57 +172,49 @@ export default function ProfilePage() {
     setIsLoadingFarms(true);
     try {
       const res = await api.get("/api/v1/farms/");
-      setFarms(res.data);
-      if (user?.email) {
-        try {
-          localStorage.setItem(`agrinexus_farms_${user.email}`, JSON.stringify(res.data));
-        } catch (e) {}
-      }
-      if (res.data.length > 0) {
-        // Keep active farm updated if already selected, or default to first
-        setActiveFarm(prev => {
-          const matched = res.data.find((f: FarmField) => f.id === prev?.id);
-          return matched || res.data[0];
-        });
+      const farmList: FarmField[] = res.data || [];
+      setFarms(farmList);
+      if (farmList.length > 0) {
+        if (!activeFarm || !farmList.find((f) => f.id === activeFarm.id)) {
+          setActiveFarm(farmList[0]);
+        } else {
+          setActiveFarm(farmList.find((f) => f.id === activeFarm.id) || farmList[0]);
+        }
       } else {
         setActiveFarm(null);
       }
     } catch {
-      showToast("Failed to fetch registered farms", "error");
+      showToast("Unable to fetch farm landholdings", "error");
     } finally {
       setIsLoadingFarms(false);
     }
   };
 
-  const fetchEIEData = async (farmId: number) => {
-    setIsLoadingEIE(true);
-    try {
-      const [histRes, foreRes] = await Promise.all([
-        api.get(`/api/v1/farms/${farmId}/satellite-history`),
-        api.get(`/api/v1/farms/${farmId}/earth-forecasts`)
-      ]);
-      setSatelliteHistory(histRes.data);
-      setEarthForecasts(foreRes.data);
-    } catch {
-      showToast("EIE engine failed to query downscaled observations", "error");
-    } finally {
-      setIsLoadingEIE(false);
-    }
-  };
+  useEffect(() => {
+    fetchFarms();
+  }, []);
 
   useEffect(() => {
-    if (activeSubTab === "earth" && activeFarm) {
-      fetchEIEData(activeFarm.id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSubTab, activeFarm]);
+    if (!activeFarm || activeSubTab !== "earth") return;
 
-  useEffect(() => {
-    if (activeTab === "farms") {
-      fetchFarms();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+    const fetchEarthIntelligence = async () => {
+      setIsLoadingEIE(true);
+      try {
+        const [historyRes, forecastRes] = await Promise.all([
+          api.get(`/api/v1/satellite-maps/history?farm_id=${activeFarm.id}`).catch(() => ({ data: [] })),
+          api.get(`/api/v1/satellite-maps/forecast?farm_id=${activeFarm.id}`).catch(() => ({ data: [] })),
+        ]);
+        setSatelliteHistory(historyRes.data || []);
+        setEarthForecasts(forecastRes.data || []);
+      } catch {
+        console.error("Earth engine error");
+      } finally {
+        setIsLoadingEIE(false);
+      }
+    };
+
+    fetchEarthIntelligence();
+  }, [activeFarm, activeSubTab]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -235,7 +226,7 @@ export default function ProfilePage() {
       const payload: any = {
         full_name: fullName,
         phone_number: phoneNumber,
-        state: locationState
+        state: locationState,
       };
       if (password) {
         payload.password = password;
@@ -262,7 +253,7 @@ export default function ProfilePage() {
     }
     setIsSubmittingFarm(true);
     try {
-      const res = await api.post("/api/v1/farms/", {
+      await api.post("/api/v1/farms/", {
         name: newFarmName,
         area: newFarmArea,
         state: newFarmState,
@@ -330,32 +321,34 @@ export default function ProfilePage() {
   const activeLatestReport = activeFarm?.soil_reports?.[0] || null;
 
   return (
-    <div className="min-h-screen bg-neutral-950 flex flex-col text-neutral-100 font-sans pb-16">
+    <div className="min-h-screen bg-slate-50/50 flex flex-col text-slate-900 font-sans pb-16">
       {/* Header */}
-      <header className="glass sticky top-0 z-40 border-b border-neutral-800">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center gap-4">
-          <Link
-            href="/dashboard"
-            className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800/60 border border-transparent hover:border-neutral-800 transition-all"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <h1 className="text-lg font-bold text-white flex items-center gap-2">
-            <User className="h-5 w-5 text-primary" />
-            Farmer & Farm Console
-          </h1>
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link
+              href="/dashboard"
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            <h1 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <User className="h-5 w-5 text-emerald-600" />
+              Farmer & Farm Console
+            </h1>
+          </div>
         </div>
       </header>
 
       <main className="flex-1 max-w-7xl mx-auto px-4 md:px-6 py-8 w-full">
         {/* Navigation Tabs */}
-        <div className="flex border-b border-neutral-800 mb-8 max-w-lg">
+        <div className="flex border-b border-slate-200 mb-8 max-w-lg">
           <button
             onClick={() => setActiveTab("account")}
             className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
               activeTab === "account"
-                ? "border-primary text-primary"
-                : "border-transparent text-neutral-500 hover:text-neutral-300"
+                ? "border-emerald-600 text-emerald-700"
+                : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
             Account Details
@@ -364,8 +357,8 @@ export default function ProfilePage() {
             onClick={() => setActiveTab("farms")}
             className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
               activeTab === "farms"
-                ? "border-primary text-primary"
-                : "border-transparent text-neutral-500 hover:text-neutral-300"
+                ? "border-emerald-600 text-emerald-700"
+                : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
             Farm & Soil Management
@@ -374,27 +367,27 @@ export default function ProfilePage() {
 
         {/* ─── TAB 1: ACCOUNT DETAILS ───────────────────────────────────── */}
         {activeTab === "account" && (
-          <div className="max-w-2xl mx-auto glass border border-neutral-800 rounded-3xl p-6 md:p-8 space-y-6">
-            <div className="flex items-center gap-3 border-b border-neutral-900 pb-5">
-              <div className="bg-primary/10 border border-primary/20 p-2.5 rounded-xl text-primary">
+          <div className="max-w-2xl mx-auto clean-card p-6 md:p-8 space-y-6">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-5">
+              <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-emerald-700">
                 <Settings className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-bold text-white text-base">Update Credentials</h3>
-                <p className="text-xs text-neutral-500 mt-0.5">Edit operator name, location parameters, and security credentials.</p>
+                <h3 className="font-bold text-slate-900 text-base">Update Credentials</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Edit operator name, location parameters, and security credentials.</p>
               </div>
             </div>
 
             <form onSubmit={handleUpdateProfile} className="space-y-6">
               <div>
-                <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-2">Full Name</label>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Full Name</label>
                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-500" />
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
                   <input
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full bg-neutral-900 border border-neutral-800 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl py-3 pl-12 pr-4 text-sm text-white outline-none transition-all font-semibold"
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100 rounded-xl py-3 pl-12 pr-4 text-sm text-slate-900 outline-none transition-all font-semibold"
                     required
                   />
                 </div>
@@ -402,26 +395,26 @@ export default function ProfilePage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-2">Phone Number</label>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Phone Number</label>
                   <div className="relative">
-                    <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-500" />
+                    <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
                     <input
                       type="text"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
-                      className="w-full bg-neutral-900 border border-neutral-800 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl py-3 pl-12 pr-4 text-sm text-white outline-none transition-all font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100 rounded-xl py-3 pl-12 pr-4 text-sm text-slate-900 outline-none transition-all font-semibold"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-2">Operator State</label>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Operator State</label>
                   <div className="relative">
-                    <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-500" />
+                    <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
                     <select
                       value={locationState}
                       onChange={(e) => setLocationState(e.target.value)}
-                      className="w-full bg-neutral-900 border border-neutral-800 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl py-3 pl-12 pr-4 text-sm text-white outline-none transition-all appearance-none font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100 rounded-xl py-3 pl-12 pr-4 text-sm text-slate-900 outline-none transition-all appearance-none font-semibold"
                     >
                       <option value="">Select State</option>
                       {STATES.map((st) => <option key={st} value={st}>{st}</option>)}
@@ -431,35 +424,35 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-2">Update Password (leave blank to keep current)</label>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Update Password (leave blank to keep current)</label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-500" />
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
                   <input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-neutral-900 border border-neutral-800 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl py-3 pl-12 pr-4 text-sm text-white outline-none transition-all"
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100 rounded-xl py-3 pl-12 pr-4 text-sm text-slate-900 outline-none transition-all"
                   />
                 </div>
               </div>
 
               {accountSuccess && (
-                <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-4 rounded-xl text-xs flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4" /> Credentials committed successfully.
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl text-xs flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-600" /> Credentials committed successfully.
                 </div>
               )}
 
               {accountError && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-xs flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" /> {accountError}
+                <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl text-xs flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-rose-600" /> {accountError}
                 </div>
               )}
 
               <button
                 type="submit"
                 disabled={isUpdatingAccount}
-                className="w-full bg-primary hover:bg-primary-600 disabled:opacity-50 text-neutral-950 font-bold py-3 rounded-xl text-xs transition-all shadow-[0_0_15px_rgba(0,200,117,0.1)]"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-xs transition-all shadow-sm"
               >
                 {isUpdatingAccount ? "Saving details..." : "Commit Credentials Changes"}
               </button>
@@ -474,10 +467,10 @@ export default function ProfilePage() {
             {/* Left Column: Farm Selector / List */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">My Landholdings</span>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">My Landholdings</span>
                 <button
                   onClick={() => setShowAddFarm(true)}
-                  className="p-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-all"
+                  className="p-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 transition-all"
                   title="Add Field"
                 >
                   <Plus className="h-4 w-4" />
@@ -485,23 +478,23 @@ export default function ProfilePage() {
               </div>
 
               {isLoadingFarms ? (
-                <div className="flex justify-center py-10"><RefreshCw className="h-5 w-5 animate-spin text-primary" /></div>
+                <div className="flex justify-center py-10"><RefreshCw className="h-5 w-5 animate-spin text-emerald-600" /></div>
               ) : farms.length === 0 ? (
-                <div className="text-center py-8 text-xs text-neutral-600">No fields registered.</div>
+                <div className="text-center py-8 text-xs text-slate-400">No fields registered.</div>
               ) : (
                 <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
                   {farms.map(f => (
                     <button
                       key={f.id}
                       onClick={() => { setActiveFarm(f); setActiveSubTab("details"); }}
-                      className={`w-full text-left p-4 rounded-2xl border transition-all flex flex-col gap-1 ${
+                      className={`w-full text-left p-4 rounded-xl border transition-all flex flex-col gap-1 ${
                         activeFarm?.id === f.id
-                          ? "bg-primary/10 border-primary/30 text-primary"
-                          : "glass border-neutral-850 text-neutral-400 hover:border-neutral-750"
+                          ? "bg-emerald-50 border-emerald-300 text-emerald-950 shadow-sm"
+                          : "clean-card hover:border-slate-300 text-slate-600"
                       }`}
                     >
-                      <span className="font-bold text-sm text-white truncate w-full">{f.name}</span>
-                      <span className="text-[10px] text-neutral-500 font-semibold">{f.area} Ha · {f.current_crop}</span>
+                      <span className="font-bold text-sm text-slate-900 truncate w-full">{f.name}</span>
+                      <span className="text-xs text-slate-500 font-medium">{f.area} Ha · {f.current_crop}</span>
                     </button>
                   ))}
                 </div>
@@ -513,32 +506,32 @@ export default function ProfilePage() {
               {activeFarm ? (
                 <div className="space-y-6">
                   {/* Dashboard Header Banner */}
-                  <div className="glass border border-neutral-800 rounded-3xl p-6 flex flex-col sm:flex-row justify-between gap-4">
+                  <div className="clean-card p-6 flex flex-col sm:flex-row justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full uppercase">
+                        <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full uppercase">
                           {activeFarm.current_crop}
                         </span>
                         {activeLatestReport && (
-                          <span className="text-[10px] font-bold text-neutral-500 bg-neutral-900 border border-neutral-800 px-2 py-0.5 rounded-full">
+                          <span className="text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full">
                             Texture: {activeLatestReport.soil_texture}
                           </span>
                         )}
                       </div>
-                      <h2 className="font-display text-2xl font-bold text-white">{activeFarm.name}</h2>
-                      <p className="text-xs text-neutral-400 mt-1">{activeFarm.village}, {activeFarm.district}, {activeFarm.state}</p>
+                      <h2 className="text-2xl font-bold text-slate-900">{activeFarm.name}</h2>
+                      <p className="text-xs text-slate-500 mt-1">{activeFarm.village}, {activeFarm.district}, {activeFarm.state}</p>
                     </div>
 
                     <div className="flex gap-2 self-start sm:self-center">
                       <button
                         onClick={() => setShowAddSoil(true)}
-                        className="bg-primary hover:bg-primary-600 text-neutral-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(0,200,117,0.1)]"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm"
                       >
                         <Plus className="h-4 w-4" /> Log Soil Test
                       </button>
                       <button
                         onClick={() => handleDeleteFarm(activeFarm.id)}
-                        className="p-2 border border-neutral-800 text-neutral-600 hover:text-red-400 hover:border-red-500/20 rounded-xl transition-all"
+                        className="p-2 border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 rounded-xl transition-all"
                         title="Delete farm"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -547,13 +540,13 @@ export default function ProfilePage() {
                   </div>
 
                   {/* Sub tabs: Details, Soil metrics gauges, Soil History chart, Earth Intelligence */}
-                  <div className="flex border-b border-neutral-900 max-w-md">
+                  <div className="flex border-b border-slate-200 max-w-md">
                     {["details", "soil", "history", "earth"].map(tab => (
                       <button
                         key={tab}
                         onClick={() => setActiveSubTab(tab as any)}
                         className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
-                          activeSubTab === tab ? "border-primary text-primary" : "border-transparent text-neutral-500 hover:text-neutral-300"
+                          activeSubTab === tab ? "border-emerald-600 text-emerald-700" : "border-transparent text-slate-500 hover:text-slate-800"
                         }`}
                       >
                         {tab === "details" ? "Details" : tab === "soil" ? "Soil Health" : tab === "history" ? "Soil History" : "Earth AI"}
@@ -563,19 +556,19 @@ export default function ProfilePage() {
 
                   {/* SUB TAB 1: FIELD DETAILS */}
                   {activeSubTab === "details" && (
-                    <div className="glass border border-neutral-800 rounded-3xl p-6 space-y-6">
-                      <h3 className="text-sm font-bold text-neutral-300 border-b border-neutral-900 pb-3 flex items-center gap-2">
-                        <Map className="h-4 w-4 text-primary" /> Parameters Registry
+                    <div className="clean-card p-6 space-y-6">
+                      <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3 flex items-center gap-2">
+                        <Map className="h-4 w-4 text-emerald-600" /> Parameters Registry
                       </h3>
                       
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-6 text-xs font-semibold">
                         <div>
-                          <span className="text-neutral-500 block">Total Area</span>
-                          <span className="text-neutral-200 block mt-1">{activeFarm.area} {activeFarm.area_unit}</span>
+                          <span className="text-slate-400 block font-medium">Total Area</span>
+                          <span className="text-slate-900 block mt-1 font-bold">{activeFarm.area} {activeFarm.area_unit}</span>
                         </div>
                         <div>
-                          <span className="text-neutral-500 block">Sowing Date</span>
-                          <span className="text-neutral-200 block mt-1">
+                          <span className="text-slate-400 block font-medium">Sowing Date</span>
+                          <span className="text-slate-900 block mt-1 font-bold">
                             {new Date(activeFarm.sowing_date + "T00:00:00").toLocaleDateString("en-IN", {
                               day: "numeric",
                               month: "long",
@@ -584,19 +577,19 @@ export default function ProfilePage() {
                           </span>
                         </div>
                         <div>
-                          <span className="text-neutral-500 block">Irrigation Channel</span>
-                          <span className="text-neutral-200 block mt-1">{activeFarm.irrigation_method}</span>
+                          <span className="text-slate-400 block font-medium">Irrigation Channel</span>
+                          <span className="text-slate-900 block mt-1 font-bold">{activeFarm.irrigation_method}</span>
                         </div>
                         <div>
-                          <span className="text-neutral-500 block">GPS Tag coordinates</span>
-                          <span className="text-neutral-200 mt-1 flex items-center gap-1">
-                            <Compass className="h-3.5 w-3.5 text-primary" />
+                          <span className="text-slate-400 block font-medium">GPS Tag coordinates</span>
+                          <span className="text-slate-900 mt-1 flex items-center gap-1 font-bold">
+                            <Compass className="h-3.5 w-3.5 text-emerald-600" />
                             {activeFarm.gps_coordinates || "None logged"}
                           </span>
                         </div>
                         <div>
-                          <span className="text-neutral-500 block">Location Node</span>
-                          <span className="text-neutral-200 block mt-1">{activeFarm.village}, {activeFarm.district}</span>
+                          <span className="text-slate-400 block font-medium">Location Node</span>
+                          <span className="text-slate-900 block mt-1 font-bold">{activeFarm.village}, {activeFarm.district}</span>
                         </div>
                       </div>
                     </div>
@@ -606,107 +599,107 @@ export default function ProfilePage() {
                   {activeSubTab === "soil" && (
                     <div className="space-y-6 animate-fade-in">
                       {!activeLatestReport ? (
-                        <div className="glass border border-neutral-800 rounded-3xl p-12 text-center text-xs text-neutral-600">
+                        <div className="clean-card p-12 text-center text-xs text-slate-400">
                           No soil report registered. Record a test above to view stats.
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                           
                           {/* NPK Chemical Health Card */}
-                          <div className="glass border border-neutral-800 rounded-3xl p-6 md:col-span-3 space-y-4">
-                            <div className="flex justify-between items-center border-b border-neutral-900 pb-3">
-                              <span className="text-xs font-bold text-neutral-300 flex items-center gap-2">
-                                <FlaskConical className="h-4 w-4 text-primary" /> N-P-K Chemical Nutrition Profile
+                          <div className="clean-card p-6 md:col-span-3 space-y-4">
+                            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                              <span className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                                <FlaskConical className="h-4 w-4 text-emerald-600" /> N-P-K Chemical Nutrition Profile
                               </span>
-                              <span className="text-[10px] text-neutral-500 font-semibold">
+                              <span className="text-xs text-slate-400 font-medium">
                                 Tested: {new Date(activeLatestReport.test_date + "T00:00:00").toLocaleDateString("en-IN")}
                               </span>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                               {/* Nitrogen */}
-                              <div className="p-4 bg-neutral-900/60 border border-neutral-850 rounded-2xl space-y-2">
+                              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                                 <div className="flex justify-between text-xs font-bold">
-                                  <span className="text-neutral-400">Nitrogen (N)</span>
+                                  <span className="text-slate-600">Nitrogen (N)</span>
                                   <span className={getNutrientStatus(activeLatestReport.nitrogen, 100, 200).color}>
                                     {getNutrientStatus(activeLatestReport.nitrogen, 100, 200).label}
                                   </span>
                                 </div>
-                                <div className="text-lg font-bold text-white">{activeLatestReport.nitrogen} mg/kg</div>
-                                <div className="h-1.5 bg-neutral-800 rounded-full overflow-hidden">
-                                  <div className="h-full bg-emerald-500" style={{ width: `${Math.min((activeLatestReport.nitrogen / 250) * 100, 100)}%` }} />
+                                <div className="text-lg font-bold text-slate-900">{activeLatestReport.nitrogen} mg/kg</div>
+                                <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                  <div className="h-full bg-emerald-600" style={{ width: `${Math.min((activeLatestReport.nitrogen / 250) * 100, 100)}%` }} />
                                 </div>
                               </div>
 
                               {/* Phosphorus */}
-                              <div className="p-4 bg-neutral-900/60 border border-neutral-850 rounded-2xl space-y-2">
+                              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                                 <div className="flex justify-between text-xs font-bold">
-                                  <span className="text-neutral-400">Phosphorus (P)</span>
+                                  <span className="text-slate-600">Phosphorus (P)</span>
                                   <span className={getNutrientStatus(activeLatestReport.phosphorus, 20, 50).color}>
                                     {getNutrientStatus(activeLatestReport.phosphorus, 20, 50).label}
                                   </span>
                                 </div>
-                                <div className="text-lg font-bold text-white">{activeLatestReport.phosphorus} mg/kg</div>
-                                <div className="h-1.5 bg-neutral-800 rounded-full overflow-hidden">
-                                  <div className="h-full bg-blue-500" style={{ width: `${Math.min((activeLatestReport.phosphorus / 80) * 100, 100)}%` }} />
+                                <div className="text-lg font-bold text-slate-900">{activeLatestReport.phosphorus} mg/kg</div>
+                                <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                  <div className="h-full bg-blue-600" style={{ width: `${Math.min((activeLatestReport.phosphorus / 80) * 100, 100)}%` }} />
                                 </div>
                               </div>
 
                               {/* Potassium */}
-                              <div className="p-4 bg-neutral-900/60 border border-neutral-850 rounded-2xl space-y-2">
+                              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                                 <div className="flex justify-between text-xs font-bold">
-                                  <span className="text-neutral-400">Potassium (K)</span>
+                                  <span className="text-slate-600">Potassium (K)</span>
                                   <span className={getNutrientStatus(activeLatestReport.potassium, 120, 240).color}>
                                     {getNutrientStatus(activeLatestReport.potassium, 120, 240).label}
                                   </span>
                                 </div>
-                                <div className="text-lg font-bold text-white">{activeLatestReport.potassium} mg/kg</div>
-                                <div className="h-1.5 bg-neutral-800 rounded-full overflow-hidden">
-                                  <div className="h-full bg-purple-500" style={{ width: `${Math.min((activeLatestReport.potassium / 300) * 100, 100)}%` }} />
+                                <div className="text-lg font-bold text-slate-900">{activeLatestReport.potassium} mg/kg</div>
+                                <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                  <div className="h-full bg-purple-600" style={{ width: `${Math.min((activeLatestReport.potassium / 300) * 100, 100)}%` }} />
                                 </div>
                               </div>
                             </div>
                           </div>
 
                           {/* Gauge: Soil pH */}
-                          <div className="glass border border-neutral-800 rounded-3xl p-5 space-y-3 flex flex-col justify-between">
+                          <div className="clean-card p-5 space-y-3 flex flex-col justify-between">
                             <div>
-                              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Soil pH Balance</span>
+                              <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Soil pH Balance</span>
                               <div className="flex items-baseline gap-2 mt-2">
-                                <h3 className="text-3xl font-bold text-white">{activeLatestReport.ph}</h3>
-                                <span className={`text-[10px] font-bold border px-2 py-0.5 rounded-full ${getPHStatus(activeLatestReport.ph).color}`}>
+                                <h3 className="text-3xl font-bold text-slate-900">{activeLatestReport.ph}</h3>
+                                <span className={`text-xs font-bold border px-2 py-0.5 rounded-md ${getPHStatus(activeLatestReport.ph).color}`}>
                                   {getPHStatus(activeLatestReport.ph).label}
                                 </span>
                               </div>
                             </div>
-                            <div className="text-[10px] text-neutral-600 font-semibold leading-relaxed">
-                              Optimal ph level for cereals (6.0 - 7.2) allows complete mineral absorption.
+                            <div className="text-xs text-slate-500 leading-relaxed">
+                              Optimal pH level for cereals (6.0 - 7.2) allows complete mineral absorption.
                             </div>
                           </div>
 
                           {/* Gauge: Moisture */}
-                          <div className="glass border border-neutral-800 rounded-3xl p-5 space-y-3 flex flex-col justify-between">
+                          <div className="clean-card p-5 space-y-3 flex flex-col justify-between">
                             <div>
-                              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Soil Moisture</span>
+                              <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Soil Moisture</span>
                               <div className="flex items-baseline gap-2 mt-2">
-                                <h3 className="text-3xl font-bold text-white">{activeLatestReport.soil_moisture}%</h3>
-                                <span className={`text-[10px] font-bold border px-2 py-0.5 rounded-full ${getMoistureStatus(activeLatestReport.soil_moisture).color}`}>
+                                <h3 className="text-3xl font-bold text-slate-900">{activeLatestReport.soil_moisture}%</h3>
+                                <span className={`text-xs font-bold border px-2 py-0.5 rounded-md ${getMoistureStatus(activeLatestReport.soil_moisture).color}`}>
                                   {getMoistureStatus(activeLatestReport.soil_moisture).label}
                                 </span>
                               </div>
                             </div>
-                            <div className="text-[10px] text-neutral-600 font-semibold leading-relaxed">
-                              Active telemetry feed matching irrigation schedules.
+                            <div className="text-xs text-slate-500 leading-relaxed">
+                              Active telemetry feed matching scheduled irrigation recommendations.
                             </div>
                           </div>
 
                           {/* Physical Metrics */}
-                          <div className="glass border border-neutral-800 rounded-3xl p-5 space-y-3 flex flex-col justify-between">
+                          <div className="clean-card p-5 space-y-3 flex flex-col justify-between">
                             <div>
-                              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Organic Carbon</span>
-                              <h3 className="text-2xl font-bold text-white mt-1">{activeLatestReport.organic_carbon}%</h3>
+                              <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Organic Carbon</span>
+                              <h3 className="text-2xl font-bold text-slate-900 mt-1">{activeLatestReport.organic_carbon}%</h3>
                             </div>
-                            <div className="border-t border-neutral-900 pt-2 flex justify-between text-[10px] text-neutral-600 font-semibold">
+                            <div className="border-t border-slate-100 pt-2 flex justify-between text-xs text-slate-500 font-medium">
                               <span>EC: {activeLatestReport.electrical_conductivity} dS/m</span>
                               <span>Temp: {activeLatestReport.temperature}°C</span>
                             </div>
@@ -721,19 +714,19 @@ export default function ProfilePage() {
                   {activeSubTab === "history" && (
                     <div className="space-y-6 animate-fade-in">
                       {activeFarm.soil_reports.length <= 1 ? (
-                        <div className="glass border border-neutral-800 rounded-3xl p-12 text-center text-xs text-neutral-600">
+                        <div className="clean-card p-12 text-center text-xs text-slate-400">
                           Need at least 2 soil reports logged to show trend comparison charts.
                         </div>
                       ) : (
-                        <div className="glass border border-neutral-800 rounded-3xl p-6 space-y-6">
-                          <h3 className="text-sm font-bold text-neutral-300 border-b border-neutral-900 pb-3 flex items-center gap-2">
-                            <History className="h-4 w-4 text-primary" /> Nutrient Trends & pH Changes
+                        <div className="clean-card p-6 space-y-6">
+                          <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3 flex items-center gap-2">
+                            <History className="h-4 w-4 text-emerald-600" /> Nutrient Trends & pH Changes
                           </h3>
 
-                          {/* Simplified dynamic SVG Line Chart for Soil pH trend */}
+                          {/* SVG Line Chart for Soil pH trend */}
                           <div className="space-y-2">
-                            <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Historical pH Profile</span>
-                            <div className="h-40 w-full relative border-b border-l border-neutral-800 pt-4 pl-4 pr-4">
+                            <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Historical pH Profile</span>
+                            <div className="h-40 w-full relative border-b border-l border-slate-200 pt-4 pl-4 pr-4">
                               <svg className="w-full h-full" viewBox="0 0 100 30" preserveAspectRatio="none">
                                 <path
                                   d={activeFarm.soil_reports
@@ -741,13 +734,12 @@ export default function ProfilePage() {
                                     .reverse()
                                     .map((rep, idx, arr) => {
                                       const x = (idx / (arr.length - 1)) * 100;
-                                      // Scale pH (4.0 to 9.0 range scaled to 30px height)
                                       const y = 30 - ((rep.ph - 4) / 5) * 30;
                                       return `${idx === 0 ? "M" : "L"} ${x} ${y}`;
                                     })
                                     .join(" ")}
                                   fill="none"
-                                  stroke="#00C875"
+                                  stroke="#059669"
                                   strokeWidth="1.5"
                                 />
                                 {activeFarm.soil_reports
@@ -757,11 +749,11 @@ export default function ProfilePage() {
                                     const x = (idx / (arr.length - 1)) * 100;
                                     const y = 30 - ((rep.ph - 4) / 5) * 30;
                                     return (
-                                      <circle key={idx} cx={x} cy={y} r="1.5" fill="#ffffff" stroke="#00C875" strokeWidth="1" />
+                                      <circle key={idx} cx={x} cy={y} r="1.5" fill="#ffffff" stroke="#059669" strokeWidth="1" />
                                     );
                                   })}
                               </svg>
-                              <div className="flex justify-between text-[8px] text-neutral-600 mt-2 font-semibold">
+                              <div className="flex justify-between text-[9px] text-slate-400 mt-2 font-medium">
                                 {activeFarm.soil_reports.slice().reverse().map((rep, idx) => (
                                   <span key={idx}>{new Date(rep.test_date + "T00:00:00").toLocaleDateString("en-IN", { month: "short", day: "numeric" })}</span>
                                 ))}
@@ -771,23 +763,23 @@ export default function ProfilePage() {
 
                           {/* Comparison Report Log list */}
                           <div className="space-y-3">
-                            <span className="text-xs font-bold text-neutral-400 uppercase tracking-widest block">Audit Log</span>
-                            <div className="divide-y divide-neutral-900/60">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Audit Log</span>
+                            <div className="divide-y divide-slate-100">
                               {activeFarm.soil_reports.map(rep => (
                                 <div key={rep.id} className="py-3 flex justify-between items-center text-xs">
                                   <div className="flex items-center gap-2">
-                                    <Database className="h-4 w-4 text-neutral-500" />
+                                    <Database className="h-4 w-4 text-slate-400" />
                                     <div>
-                                      <div className="font-bold text-white">Report #{rep.id} ({rep.source.toUpperCase()})</div>
-                                      <div className="text-[10px] text-neutral-500">Texture: {rep.soil_texture}</div>
+                                      <div className="font-bold text-slate-900">Report #{rep.id} ({rep.source.toUpperCase()})</div>
+                                      <div className="text-[11px] text-slate-500">Texture: {rep.soil_texture}</div>
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-6 text-right">
                                     <div>
-                                      <div className="font-bold text-primary">pH: {rep.ph}</div>
-                                      <div className="text-[10px] text-neutral-500">N:{rep.nitrogen} P:{rep.phosphorus} K:{rep.potassium}</div>
+                                      <div className="font-bold text-emerald-700">pH: {rep.ph}</div>
+                                      <div className="text-[11px] text-slate-500">N:{rep.nitrogen} P:{rep.phosphorus} K:{rep.potassium}</div>
                                     </div>
-                                    <span className="text-[10px] text-neutral-400 font-semibold">
+                                    <span className="text-xs text-slate-400 font-medium">
                                       {new Date(rep.test_date + "T00:00:00").toLocaleDateString("en-IN")}
                                     </span>
                                   </div>
@@ -805,8 +797,8 @@ export default function ProfilePage() {
                     <div className="space-y-6 animate-fade-in text-left">
                       {isLoadingEIE ? (
                         <div className="flex flex-col justify-center items-center py-20 gap-3">
-                          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
-                          <span className="text-xs text-neutral-500 font-bold uppercase tracking-wider">
+                          <RefreshCw className="h-8 w-8 animate-spin text-emerald-600" />
+                          <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">
                             Consulting Sentinel & Weather models...
                           </span>
                         </div>
@@ -815,9 +807,9 @@ export default function ProfilePage() {
                           {/* Overview metrics card */}
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                             {/* Health score gauge card */}
-                            <div className="glass border border-neutral-800 rounded-3xl p-5 flex flex-col justify-between">
+                            <div className="clean-card p-5 flex flex-col justify-between">
                               <div>
-                                <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest block mb-2">
+                                <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block mb-2">
                                   Farm Health Index
                                 </span>
                                 {(() => {
@@ -826,9 +818,9 @@ export default function ProfilePage() {
                                   const health = Math.round((1 - stress) * 100);
                                   return (
                                     <div className="flex items-baseline gap-2">
-                                      <h3 className="text-4xl font-extrabold text-white">{health}%</h3>
-                                      <span className={`text-[9px] font-bold border px-2 py-0.5 rounded-full ${
-                                        health >= 80 ? "text-emerald-400 border-emerald-500/20 bg-emerald-500/10" : "text-amber-400 border-amber-500/20 bg-amber-500/10"
+                                      <h3 className="text-4xl font-extrabold text-slate-900">{health}%</h3>
+                                      <span className={`text-[10px] font-bold border px-2 py-0.5 rounded-md ${
+                                        health >= 80 ? "text-emerald-800 border-emerald-200 bg-emerald-50" : "text-amber-800 border-amber-200 bg-amber-50"
                                       }`}>
                                         {health >= 80 ? "EXCELLENT" : "STRESSED"}
                                       </span>
@@ -836,15 +828,15 @@ export default function ProfilePage() {
                                   );
                                 })()}
                               </div>
-                              <span className="text-[10px] text-neutral-600 font-semibold leading-relaxed mt-4 block">
+                              <span className="text-xs text-slate-500 leading-relaxed mt-4 block">
                                 Calculated from soil hydration, weather trend pressure, and vegetation indices.
                               </span>
                             </div>
 
                             {/* NDVI Vigor card */}
-                            <div className="glass border border-neutral-800 rounded-3xl p-5 flex flex-col justify-between">
+                            <div className="clean-card p-5 flex flex-col justify-between">
                               <div>
-                                <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest block mb-2">
+                                <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block mb-2">
                                   Vegetative Vigor (NDVI)
                                 </span>
                                 {(() => {
@@ -852,23 +844,23 @@ export default function ProfilePage() {
                                   const ndvi = currentObs ? currentObs.ndvi : 0.65;
                                   return (
                                     <div className="flex items-baseline gap-2">
-                                      <h3 className="text-4xl font-extrabold text-white">{ndvi.toFixed(2)}</h3>
-                                      <span className="text-[9px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full uppercase">
+                                      <h3 className="text-4xl font-extrabold text-slate-900">{ndvi.toFixed(2)}</h3>
+                                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md uppercase">
                                         Active Canopy
                                       </span>
                                     </div>
                                   );
                                 })()}
                               </div>
-                              <span className="text-[10px] text-neutral-600 font-semibold leading-relaxed mt-4 block">
+                              <span className="text-xs text-slate-500 leading-relaxed mt-4 block">
                                 Derived from Sentinel-2 MSI band calculations. Optimal vigor target: 0.60 - 0.88.
                               </span>
                             </div>
 
                             {/* Leaf moisture (NDWI) card */}
-                            <div className="glass border border-neutral-800 rounded-3xl p-5 flex flex-col justify-between">
+                            <div className="clean-card p-5 flex flex-col justify-between">
                               <div>
-                                <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest block mb-2">
+                                <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block mb-2">
                                   Hydric Saturation (NDWI)
                                 </span>
                                 {(() => {
@@ -876,27 +868,27 @@ export default function ProfilePage() {
                                   const ndwi = currentObs ? currentObs.ndwi : 0.45;
                                   return (
                                     <div className="flex items-baseline gap-2">
-                                      <h3 className="text-4xl font-extrabold text-white">{ndwi.toFixed(2)}</h3>
-                                      <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full uppercase">
+                                      <h3 className="text-4xl font-extrabold text-slate-900">{ndwi.toFixed(2)}</h3>
+                                      <span className="text-[10px] font-bold text-blue-800 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md uppercase">
                                         Hydrated
                                       </span>
                                     </div>
                                   );
                                 })()}
                               </div>
-                              <span className="text-[10px] text-neutral-600 font-semibold leading-relaxed mt-4 block">
+                              <span className="text-xs text-slate-500 leading-relaxed mt-4 block">
                                 Corresponds to foliage water density. High values mitigate critical irrigation demand.
                               </span>
                             </div>
                           </div>
 
-                          {/* SVG Multi-Window chart of historical & future predicted NDVI */}
+                          {/* SVG Multi-Window chart */}
                           {satelliteHistory.length > 0 && earthForecasts.length > 0 && (
-                            <div className="glass border border-neutral-800 rounded-3xl p-6 space-y-4">
-                              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest block">
+                            <div className="clean-card p-6 space-y-4">
+                              <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">
                                 Vigor Cycle Trajectory (Current + Forecast)
                               </span>
-                              <div className="h-44 w-full relative border-b border-l border-neutral-800 pt-4 pl-4 pr-4">
+                              <div className="h-44 w-full relative border-b border-l border-slate-200 pt-4 pl-4 pr-4">
                                 {(() => {
                                   const histPoints = satelliteHistory.slice(0, 3).reverse().map((h) => ({
                                     label: new Date(h.observation_date + "T00:00:00").toLocaleDateString("en-IN", { month: "short", day: "numeric" }),
@@ -918,8 +910,8 @@ export default function ProfilePage() {
                                   return (
                                     <>
                                       <svg className="w-full h-full" viewBox="0 0 100 30" preserveAspectRatio="none">
-                                        <line x1="0" y1="10" x2="100" y2="10" stroke="#262626" strokeWidth="0.3" strokeDasharray="2,2" />
-                                        <line x1="0" y1="20" x2="100" y2="20" stroke="#262626" strokeWidth="0.3" strokeDasharray="2,2" />
+                                        <line x1="0" y1="10" x2="100" y2="10" stroke="#e2e8f0" strokeWidth="0.5" strokeDasharray="2,2" />
+                                        <line x1="0" y1="20" x2="100" y2="20" stroke="#e2e8f0" strokeWidth="0.5" strokeDasharray="2,2" />
 
                                         <path
                                           d={combined
@@ -930,7 +922,7 @@ export default function ProfilePage() {
                                             })
                                             .join(" ")}
                                           fill="none"
-                                          stroke="#00C875"
+                                          stroke="#059669"
                                           strokeWidth="1.5"
                                         />
 
@@ -943,16 +935,16 @@ export default function ProfilePage() {
                                               cx={x}
                                               cy={y}
                                               r="1.5"
-                                              fill={p.isFore ? "#ffb020" : "#ffffff"}
-                                              stroke="#00C875"
+                                              fill={p.isFore ? "#d97706" : "#ffffff"}
+                                              stroke="#059669"
                                               strokeWidth="1"
                                             />
                                           );
                                         })}
                                       </svg>
-                                      <div className="flex justify-between text-[8px] text-neutral-600 mt-2 font-semibold">
+                                      <div className="flex justify-between text-[9px] text-slate-400 mt-2 font-medium">
                                         {combined.map((p, idx) => (
-                                          <span key={idx} className={p.isFore ? "text-amber-500" : "text-neutral-500"}>
+                                          <span key={idx} className={p.isFore ? "text-amber-600 font-semibold" : "text-slate-500"}>
                                             {p.label}
                                           </span>
                                         ))}
@@ -961,20 +953,20 @@ export default function ProfilePage() {
                                   );
                                 })()}
                               </div>
-                              <div className="flex gap-4 text-[10px] text-neutral-600 justify-end pt-1">
-                                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-white border border-primary"></span> Historical Readings</span>
-                                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-500"></span> AI Projections</span>
+                              <div className="flex gap-4 text-xs text-slate-500 justify-end pt-1">
+                                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-white border border-emerald-600"></span> Historical</span>
+                                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-500"></span> AI Projections</span>
                               </div>
                             </div>
                           )}
 
                           {/* Forecasting Windows cards list */}
                           <div className="space-y-4">
-                            <span className="text-xs font-bold text-neutral-400 uppercase tracking-widest block">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
                               Explainable AI Advisory Timeline
                             </span>
                             
-                            <div className="grid grid-cols-1 gap-6">
+                            <div className="grid grid-cols-1 gap-4">
                               {["weekly", "monthly", "seasonal"].map(win => {
                                 const f = earthForecasts.find(item => item.window === win);
                                 if (!f) return null;
@@ -982,82 +974,82 @@ export default function ProfilePage() {
                                 return (
                                   <div
                                     key={win}
-                                    className="glass border border-neutral-800 rounded-3xl p-6 flex flex-col md:flex-row justify-between gap-6 hover:border-neutral-700 transition-all duration-300"
+                                    className="clean-card p-6 flex flex-col md:flex-row justify-between gap-6 hover:shadow-md transition-all duration-300"
                                   >
                                     <div className="space-y-3 flex-1">
                                       <div className="flex items-center gap-2">
-                                        <span className="text-xs font-bold text-white uppercase tracking-wider bg-neutral-900 border border-neutral-800 px-3 py-1 rounded-full">
+                                        <span className="text-xs font-bold text-slate-800 uppercase tracking-wider bg-slate-100 border border-slate-200 px-3 py-1 rounded-md">
                                           {win === "weekly" ? "7-Day Forecast" : win === "monthly" ? "30-Day Forecast" : "Seasonal (90d) Forecast"}
                                         </span>
-                                        <span className="text-[10px] text-neutral-500 font-semibold">
+                                        <span className="text-xs text-slate-400 font-medium">
                                           Target: {new Date(f.target_date + "T00:00:00").toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
                                         </span>
                                       </div>
                                       
                                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 text-xs font-semibold">
                                         <div>
-                                          <span className="text-neutral-500 block">Forecast NDVI</span>
-                                          <span className="text-white block mt-1 font-bold">{f.predicted_ndvi.toFixed(2)}</span>
+                                          <span className="text-slate-400 block font-medium">Forecast NDVI</span>
+                                          <span className="text-slate-900 block mt-1 font-bold">{f.predicted_ndvi.toFixed(2)}</span>
                                         </div>
                                         <div>
-                                          <span className="text-neutral-500 block">Yield Index</span>
-                                          <span className={`block mt-1 font-bold ${f.yield_trend >= 1.0 ? "text-emerald-400" : "text-red-400"}`}>
+                                          <span className="text-slate-400 block font-medium">Yield Index</span>
+                                          <span className={`block mt-1 font-bold ${f.yield_trend >= 1.0 ? "text-emerald-700" : "text-rose-600"}`}>
                                             {f.yield_trend >= 1.0 ? "+" : ""}{Math.round((f.yield_trend - 1) * 100)}%
                                           </span>
                                         </div>
                                         <div>
-                                          <span className="text-neutral-500 block">Soil Degradation</span>
-                                          <span className="text-neutral-200 block mt-1">{(100 - f.soil_fertility_index * 100).toFixed(0)}%</span>
+                                          <span className="text-slate-400 block font-medium">Soil Degradation</span>
+                                          <span className="text-slate-700 block mt-1 font-bold">{(100 - f.soil_fertility_index * 100).toFixed(0)}%</span>
                                         </div>
                                         <div>
-                                          <span className="text-neutral-500 block">Risk Matrix</span>
+                                          <span className="text-slate-400 block font-medium">Risk Matrix</span>
                                           <span className={`block mt-1 font-bold ${
-                                            f.crop_stress_index > 0.5 ? "text-red-400" : "text-emerald-400"
+                                            f.crop_stress_index > 0.5 ? "text-rose-600" : "text-emerald-700"
                                           }`}>
                                             {f.crop_stress_index > 0.5 ? "CRITICAL" : "NORMAL"}
                                           </span>
                                         </div>
                                       </div>
 
-                                      <div className="bg-primary/5 border border-primary/10 p-4 rounded-2xl flex items-start gap-2.5 text-xs">
-                                        <AlertCircle className="h-4.5 w-4.5 text-primary flex-shrink-0 mt-0.5" />
-                                        <p className="text-neutral-300 leading-relaxed">{f.explanation}</p>
+                                      <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex items-start gap-2.5 text-xs">
+                                        <AlertCircle className="h-4 w-4 text-emerald-700 flex-shrink-0 mt-0.5" />
+                                        <p className="text-emerald-950 leading-relaxed">{f.explanation}</p>
                                       </div>
                                     </div>
 
-                                    <div className="flex flex-col justify-around gap-4 min-w-[200px] border-t md:border-t-0 md:border-l border-neutral-900/60 pt-4 md:pt-0 md:pl-6">
+                                    <div className="flex flex-col justify-around gap-4 min-w-[200px] border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6">
                                       <div className="space-y-1.5 text-xs font-bold">
                                         <div className="flex justify-between">
-                                          <span className="text-neutral-400">Crop Stress</span>
-                                          <span className={f.crop_stress_index > 0.5 ? "text-red-400" : "text-emerald-400"}>
+                                          <span className="text-slate-500 font-medium">Crop Stress</span>
+                                          <span className={f.crop_stress_index > 0.5 ? "text-rose-600" : "text-emerald-700"}>
                                             {Math.round(f.crop_stress_index * 100)}%
                                           </span>
                                         </div>
-                                        <div className="h-1.5 bg-neutral-900 rounded-full overflow-hidden">
-                                          <div className={`h-full ${f.crop_stress_index > 0.5 ? "bg-red-500" : "bg-emerald-500"}`} style={{ width: `${f.crop_stress_index * 100}%` }}></div>
+                                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                          <div className={`h-full ${f.crop_stress_index > 0.5 ? "bg-rose-500" : "bg-emerald-600"}`} style={{ width: `${f.crop_stress_index * 100}%` }}></div>
                                         </div>
                                       </div>
 
                                       <div className="space-y-1.5 text-xs font-bold">
                                         <div className="flex justify-between">
-                                          <span className="text-neutral-400">Irrigation Demand</span>
-                                          <span className={f.irrigation_demand_index > 0.6 ? "text-blue-400" : "text-neutral-400"}>
+                                          <span className="text-slate-500 font-medium">Irrigation Demand</span>
+                                          <span className={f.irrigation_demand_index > 0.6 ? "text-blue-600" : "text-slate-600"}>
                                             {Math.round(f.irrigation_demand_index * 100)}%
                                           </span>
                                         </div>
-                                        <div className="h-1.5 bg-neutral-900 rounded-full overflow-hidden">
-                                          <div className="h-full bg-blue-500" style={{ width: `${f.irrigation_demand_index * 100}%` }}></div>
+                                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                          <div className="h-full bg-blue-600" style={{ width: `${f.irrigation_demand_index * 100}%` }}></div>
                                         </div>
                                       </div>
 
                                       <div className="space-y-1.5 text-xs font-bold">
                                         <div className="flex justify-between">
-                                          <span className="text-neutral-400">Pathogen / Disease Risk</span>
-                                          <span className={f.disease_risk_index > 0.5 ? "text-rose-400" : "text-neutral-400"}>
+                                          <span className="text-slate-500 font-medium">Disease Risk</span>
+                                          <span className={f.disease_risk_index > 0.5 ? "text-rose-600" : "text-slate-600"}>
                                             {Math.round(f.disease_risk_index * 100)}%
                                           </span>
                                         </div>
-                                        <div className="h-1.5 bg-neutral-900 rounded-full overflow-hidden">
+                                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                           <div className="h-full bg-rose-500" style={{ width: `${f.disease_risk_index * 100}%` }}></div>
                                         </div>
                                       </div>
@@ -1074,10 +1066,10 @@ export default function ProfilePage() {
 
                 </div>
               ) : (
-                <div className="glass border border-neutral-800 rounded-3xl p-16 text-center">
-                  <Map className="h-10 w-10 text-neutral-700 mx-auto mb-4" />
-                  <h3 className="font-bold text-neutral-300 mb-2">No Active Farm Field</h3>
-                  <p className="text-xs text-neutral-500">Please select an active field or register a new one.</p>
+                <div className="clean-card p-16 text-center">
+                  <Map className="h-10 w-10 text-slate-300 mx-auto mb-4" />
+                  <h3 className="font-bold text-slate-700 mb-1">No Active Farm Field</h3>
+                  <p className="text-xs text-slate-400">Please select an active field or register a new one.</p>
                 </div>
               )}
             </div>
@@ -1089,16 +1081,16 @@ export default function ProfilePage() {
 
       {/* Register Farm Modal */}
       {showAddFarm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-fade-in">
-          <div className="glass border border-neutral-800 rounded-3xl w-full max-w-lg overflow-hidden relative animate-slide-up">
-            <div className="border-b border-neutral-800 p-6 flex justify-between items-center">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg overflow-hidden relative shadow-2xl animate-scale-in">
+            <div className="border-b border-slate-100 p-6 flex justify-between items-center bg-slate-50/50">
               <div>
-                <h3 className="text-lg font-bold text-white">Register Crop Field</h3>
-                <p className="text-xs text-neutral-500 mt-0.5">Register a landholding to config crop & soil parameters.</p>
+                <h3 className="text-base font-bold text-slate-900">Register Crop Field</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Register a landholding to configure crop & soil parameters.</p>
               </div>
               <button
                 onClick={() => setShowAddFarm(false)}
-                className="p-2 rounded-xl text-neutral-500 hover:text-white hover:bg-neutral-900 border border-transparent hover:border-neutral-800 transition-all"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1108,25 +1100,25 @@ export default function ProfilePage() {
               <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Field Name *</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Field Name *</label>
                     <input
                       type="text"
                       value={newFarmName}
                       onChange={e => setNewFarmName(e.target.value)}
                       placeholder="e.g. West Canal Bed"
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Land Area (Acres/Ha) *</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Land Area (Acres/Ha) *</label>
                     <input
                       type="number"
                       step="0.1"
                       min="0.1"
                       value={newFarmArea}
                       onChange={e => setNewFarmArea(parseFloat(e.target.value))}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors font-semibold"
                       required
                     />
                   </div>
@@ -1134,34 +1126,34 @@ export default function ProfilePage() {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">State</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">State</label>
                     <select
                       value={newFarmState}
                       onChange={e => setNewFarmState(e.target.value)}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-3 py-2.5 text-slate-900 text-xs outline-none transition-colors font-semibold"
                     >
                       {STATES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">District *</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">District *</label>
                     <input
                       type="text"
                       value={newFarmDistrict}
                       onChange={e => setNewFarmDistrict(e.target.value)}
                       placeholder="e.g. Ludhiana"
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Village *</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Village *</label>
                     <input
                       type="text"
                       value={newFarmVillage}
                       onChange={e => setNewFarmVillage(e.target.value)}
                       placeholder="e.g. Khanna"
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors"
                       required
                     />
                   </div>
@@ -1169,22 +1161,22 @@ export default function ProfilePage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Current Crop *</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Current Crop *</label>
                     <select
                       value={newCrop}
                       onChange={e => setNewCrop(e.target.value)}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors font-semibold"
                     >
                       {CROPS.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Sowing Date *</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Sowing Date *</label>
                     <input
                       type="date"
                       value={newSowDate}
                       onChange={e => setNewSowDate(e.target.value)}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors"
                       required
                     />
                   </div>
@@ -1192,40 +1184,40 @@ export default function ProfilePage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Irrigation Method *</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Irrigation Method *</label>
                     <select
                       value={newIrrigation}
                       onChange={e => setNewIrrigation(e.target.value)}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors font-semibold"
                     >
                       {IRRIGATION_METHODS.map(irr => <option key={irr} value={irr}>{irr}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">GPS Tag (optional)</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">GPS Tag (optional)</label>
                     <input
                       type="text"
                       value={newGPS}
                       onChange={e => setNewGPS(e.target.value)}
                       placeholder="e.g. 30.9015° N, 75.8569° E"
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs placeholder-neutral-600 outline-none focus:border-primary transition-colors"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="border-t border-neutral-800 p-6 flex gap-4">
+              <div className="border-t border-slate-100 p-5 bg-slate-50/50 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setShowAddFarm(false)}
-                  className="flex-1 bg-neutral-900 hover:bg-neutral-850 border border-neutral-850 text-neutral-200 font-semibold py-3 rounded-xl text-xs transition-colors"
+                  className="flex-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-xs transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingFarm}
-                  className="flex-[2] bg-primary hover:bg-primary-600 disabled:opacity-50 text-neutral-950 font-bold py-3 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(0,200,117,0.15)]"
+                  className="flex-[2] bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm"
                 >
                   {isSubmittingFarm ? <><RefreshCw className="h-4 w-4 animate-spin" />Registering...</> : "Confirm Registration"}
                 </button>
@@ -1237,16 +1229,16 @@ export default function ProfilePage() {
 
       {/* Log Soil Report Modal */}
       {showAddSoil && activeFarm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-fade-in">
-          <div className="glass border border-neutral-800 rounded-3xl w-full max-w-lg overflow-hidden relative animate-slide-up">
-            <div className="border-b border-neutral-800 p-6 flex justify-between items-center">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg overflow-hidden relative shadow-2xl animate-scale-in">
+            <div className="border-b border-slate-100 p-6 flex justify-between items-center bg-slate-50/50">
               <div>
-                <h3 className="text-lg font-bold text-white">Log Soil Chemistry Report</h3>
-                <p className="text-xs text-neutral-500 mt-0.5">Input laboratory or diagnostic test metrics for {activeFarm.name}.</p>
+                <h3 className="text-base font-bold text-slate-900">Log Soil Chemistry Report</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Input laboratory or diagnostic test metrics for {activeFarm.name}.</p>
               </div>
               <button
                 onClick={() => setShowAddSoil(false)}
-                className="p-2 rounded-xl text-neutral-500 hover:text-white hover:bg-neutral-900 border border-transparent hover:border-neutral-800 transition-all"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1256,11 +1248,11 @@ export default function ProfilePage() {
               <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Data Input Source</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Data Input Source</label>
                     <select
                       value={soilSource}
                       onChange={e => setSoilSource(e.target.value)}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors font-semibold"
                     >
                       <option value="manual">Manual Entry (Operator)</option>
                       <option value="sensor">IoT Ground Probe Sensor</option>
@@ -1269,12 +1261,12 @@ export default function ProfilePage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Test Date</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Test Date</label>
                     <input
                       type="date"
                       value={soilDate}
                       onChange={e => setSoilDate(e.target.value)}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors font-semibold"
                       required
                     />
                   </div>
@@ -1282,32 +1274,32 @@ export default function ProfilePage() {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">pH (0.0 - 14.0)</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">pH (0.0 - 14.0)</label>
                     <input
                       type="number" step="0.1" min="0" max="14"
                       value={soilPH}
                       onChange={e => setSoilPH(parseFloat(e.target.value))}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors font-semibold"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Nitrogen (mg/kg)</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Nitrogen (mg/kg)</label>
                     <input
                       type="number" step="1" min="0"
                       value={soilN}
                       onChange={e => setSoilN(parseInt(e.target.value))}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors font-semibold"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Phosphorus</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Phosphorus</label>
                     <input
                       type="number" step="1" min="0"
                       value={soilP}
                       onChange={e => setSoilP(parseInt(e.target.value))}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors font-semibold"
                       required
                     />
                   </div>
@@ -1315,32 +1307,32 @@ export default function ProfilePage() {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Potassium (K)</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Potassium (K)</label>
                     <input
                       type="number" step="1" min="0"
                       value={soilK}
                       onChange={e => setSoilK(parseInt(e.target.value))}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors font-semibold"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Organic Carbon %</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Organic Carbon %</label>
                     <input
                       type="number" step="0.01" min="0" max="100"
                       value={soilCarbon}
                       onChange={e => setSoilCarbon(parseFloat(e.target.value))}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors font-semibold"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Soil Moisture %</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Soil Moisture %</label>
                     <input
                       type="number" step="0.1" min="0" max="100"
                       value={soilMoisture}
                       onChange={e => setSoilMoisture(parseFloat(e.target.value))}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors font-semibold"
                       required
                     />
                   </div>
@@ -1348,63 +1340,63 @@ export default function ProfilePage() {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">EC (dS/m)</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">EC (dS/m)</label>
                     <input
                       type="number" step="0.1" min="0"
                       value={soilEC}
                       onChange={e => setSoilEC(parseFloat(e.target.value))}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors font-semibold"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Temp (°C)</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Temp (°C)</label>
                     <input
                       type="number" step="0.5"
                       value={soilTemp}
                       onChange={e => setSoilTemp(parseFloat(e.target.value))}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors font-semibold"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Relative Humid %</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Relative Humid %</label>
                     <input
                       type="number" step="1" min="0" max="100"
                       value={soilHumidity}
                       onChange={e => setSoilHumidity(parseInt(e.target.value))}
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-semibold"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors font-semibold"
                       required
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1.5">Soil Texture</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Soil Texture</label>
                   <select
                     value={soilTexture}
                     onChange={e => setSoilTexture(e.target.value)}
-                    className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-primary transition-colors font-semibold"
+                    className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors font-semibold"
                   >
                     {SOIL_TEXTURES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
               </div>
 
-              <div className="border-t border-neutral-800 p-6 flex gap-4">
+              <div className="border-t border-slate-100 p-5 bg-slate-50/50 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setShowAddSoil(false)}
-                  className="flex-1 bg-neutral-900 hover:bg-neutral-850 border border-neutral-850 text-neutral-200 font-semibold py-3 rounded-xl text-xs transition-colors"
+                  className="flex-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-xs transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingSoil}
-                  className="flex-[2] bg-primary hover:bg-primary-600 disabled:opacity-50 text-neutral-950 font-bold py-3 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(0,200,117,0.15)]"
+                  className="flex-[2] bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm"
                 >
-                  {isSubmittingSoil ? <><RefreshCw className="h-4 w-4 animate-spin" />Commiting...</> : "Commit Soil Test"}
+                  {isSubmittingSoil ? <><RefreshCw className="h-4 w-4 animate-spin" />Committing...</> : "Commit Soil Test"}
                 </button>
               </div>
             </form>

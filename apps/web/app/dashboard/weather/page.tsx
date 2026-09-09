@@ -19,7 +19,7 @@ import {
   Cloud,
   CloudLightning,
   CloudDrizzle,
-  CheckCircle
+  CheckCircle2
 } from "lucide-react";
 
 interface ForecastDay {
@@ -73,12 +73,12 @@ export default function WeatherPage() {
               if (weekly) {
                 if (weekly.crop_stress_index > 0.4) {
                   eieAdvisories.push(
-                    `[Earth AI - ${farm.name}] Elevated crop stress warning (${Math.round(weekly.crop_stress_index * 100)}%). Analysis: ${weekly.explanation}`
+                    `[${farm.name}] Elevated crop stress warning (${Math.round(weekly.crop_stress_index * 100)}%). ${weekly.explanation}`
                   );
                 }
                 if (weekly.irrigation_demand_index > 0.5) {
                   eieAdvisories.push(
-                    `[Earth AI - ${farm.name}] High evapotranspiration and soil moisture depletion predicted. Consider scheduling watering cycles.`
+                    `[${farm.name}] High evapotranspiration detected. Consider scheduling irrigation.`
                   );
                 }
               }
@@ -105,190 +105,180 @@ export default function WeatherPage() {
 
   const getWeatherIcon = (cond: string) => {
     const c = cond.toLowerCase();
-    if (c.includes("sunny")) return <Sun className="h-6 w-6 text-amber-400" />;
-    if (c.includes("rain") || c.includes("showers")) return <CloudRain className="h-6 w-6 text-blue-400" />;
-    if (c.includes("storm") || c.includes("lightning")) return <CloudLightning className="h-6 w-6 text-purple-400" />;
-    if (c.includes("cloud")) return <Cloud className="h-6 w-6 text-neutral-400" />;
-    if (c.includes("drizzle")) return <CloudDrizzle className="h-6 w-6 text-teal-400" />;
-    return <CloudSun className="h-6 w-6 text-primary" />;
-  };
-
-  const getGlowColor = (cond: string) => {
-    const c = cond.toLowerCase();
-    if (c.includes("sunny")) return "from-amber-500/10 to-orange-500/5 border-orange-500/20";
-    if (c.includes("rain") || c.includes("showers") || c.includes("storm")) return "from-blue-500/10 to-indigo-500/5 border-blue-500/20";
-    if (c.includes("frost") || c.includes("mist")) return "from-teal-500/10 to-cyan-500/5 border-teal-500/20";
-    return "from-neutral-800/25 to-neutral-900/5 border-neutral-800";
+    if (c.includes("sunny")) return <Sun className="h-6 w-6 text-amber-500" />;
+    if (c.includes("rain") || c.includes("showers")) return <CloudRain className="h-6 w-6 text-sky-600" />;
+    if (c.includes("storm") || c.includes("lightning")) return <CloudLightning className="h-6 w-6 text-purple-600" />;
+    if (c.includes("cloud")) return <Cloud className="h-6 w-6 text-slate-500" />;
+    if (c.includes("drizzle")) return <CloudDrizzle className="h-6 w-6 text-teal-600" />;
+    return <CloudSun className="h-6 w-6 text-emerald-600" />;
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-sans pb-16">
-      {/* Header Banner */}
-      <header className="glass sticky top-0 z-40 border-b border-neutral-800">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center gap-4">
-          <Link 
-            href="/dashboard" 
-            className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800/60 border border-transparent hover:border-neutral-800 transition-all"
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans pb-16">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link 
+              href="/dashboard" 
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            <h1 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <CloudSun className="h-5 w-5 text-sky-600" />
+              Weather & Microclimate Intelligence
+            </h1>
+          </div>
+          <button 
+            onClick={fetchWeather}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 shadow-sm transition-all"
           >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <h1 className="text-lg font-bold text-white flex items-center gap-2">
-            <CloudSun className="h-5 w-5 text-primary" />
-            Weather Intelligence
-          </h1>
+            <RefreshCw className="h-3.5 w-3.5" />
+            Refresh
+          </button>
         </div>
       </header>
 
-      <main className="flex-1 max-w-5xl mx-auto px-6 py-10 w-full">
+      <main className="flex-1 max-w-5xl mx-auto px-6 py-8 w-full">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-32 text-neutral-500 gap-3">
-            <RefreshCw className="h-8 w-8 text-primary animate-spin" />
-            <span className="text-sm font-semibold">Contacting weather station...</span>
+          <div className="flex flex-col items-center justify-center py-28 text-slate-400 gap-3">
+            <RefreshCw className="h-7 w-7 text-emerald-600 animate-spin" />
+            <span className="text-xs font-semibold">Retrieving weather telemetry...</span>
           </div>
         ) : error ? (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-6 rounded-3xl text-sm flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 p-5 rounded-2xl text-xs flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5 text-rose-600" />
             <span>{error}</span>
           </div>
         ) : data ? (
-          <div className="space-y-8 animate-fade-in">
-            {/* Upper grid */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
+          <div className="space-y-6">
+            {/* Upper Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
               
-              {/* Primary Current Card (Left) */}
-              <div className={`md:col-span-7 bg-gradient-to-br ${getGlowColor(data.condition)} border rounded-3xl p-8 flex flex-col justify-between relative overflow-hidden shadow-xl min-h-[300px]`}>
+              {/* Primary Current Card */}
+              <div className="md:col-span-7 clean-card p-7 flex flex-col justify-between bg-white shadow-sm">
                 <div>
                   <div className="flex justify-between items-start mb-6">
                     <div>
-                      <span className="text-[10px] uppercase font-bold tracking-widest text-neutral-400">Microclimate Center</span>
-                      <h2 className="text-3xl font-display font-bold text-white mt-1">{data.state}</h2>
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Microclimate Center</span>
+                      <h2 className="text-2xl font-display font-bold text-slate-900 mt-1">{data.state}</h2>
                     </div>
-                    <div className="bg-neutral-900/60 p-3 rounded-2xl border border-neutral-800">
+                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
                       {getWeatherIcon(data.condition)}
                     </div>
                   </div>
 
                   <div className="flex items-baseline gap-2">
-                    <span className="text-6xl font-display font-extrabold text-white">{data.temperature}</span>
-                    <span className="text-2xl font-bold text-primary">°C</span>
+                    <span className="text-5xl font-display font-extrabold text-slate-900">{data.temperature}</span>
+                    <span className="text-2xl font-bold text-emerald-700">°C</span>
                   </div>
-                  <p className="text-neutral-300 font-semibold text-lg mt-2">{data.condition}</p>
+                  <p className="text-slate-600 font-semibold text-base mt-2">{data.condition}</p>
                 </div>
 
-                <div className="text-[10px] text-neutral-500 mt-6 flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-ping"></span>
-                  Real-time localized satellite feed active
+                <div className="text-[11px] text-slate-400 mt-6 flex items-center gap-1.5">
+                  <span className="h-2 w-2 bg-emerald-500 rounded-full"></span>
+                  Real-time telemetry feed active
                 </div>
               </div>
 
-              {/* Warnings / Alerts Card (Right) */}
-              <div className="md:col-span-5 glass border border-neutral-800 rounded-3xl p-6 flex flex-col justify-between">
+              {/* Warnings Card */}
+              <div className="md:col-span-5 clean-card p-6 flex flex-col justify-between bg-white shadow-sm">
                 <div>
-                  <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Microclimate Warnings</h3>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Risk & Warning Flags</h3>
                   
                   {data.alerts.length === 0 ? (
-                    <div className="py-10 text-center text-neutral-500 flex flex-col items-center gap-3">
-                      <CheckCircle className="h-8 w-8 text-primary/40" />
-                      <span className="text-xs font-semibold">No active warnings in this sector.</span>
+                    <div className="py-8 text-center text-slate-400 flex flex-col items-center gap-2">
+                      <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+                      <span className="text-xs font-semibold text-slate-600">No active microclimate hazards.</span>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {data.alerts.map((alt, idx) => (
                         <div 
                           key={idx} 
-                          className={`p-4 rounded-xl border flex items-start gap-3 animate-pulse ${
+                          className={`p-3.5 rounded-xl border flex items-start gap-3 ${
                             alt.severity === "Red"
-                              ? "bg-red-500/10 border-red-500/20 text-red-400"
-                              : "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                              ? "bg-rose-50 border-rose-200 text-rose-700"
+                              : "bg-amber-50 border-amber-200 text-amber-700"
                           }`}
                         >
-                          {alt.severity === "Red" ? (
-                            <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                          ) : (
-                            <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                          )}
+                          <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
                           <div>
                             <div className="text-xs font-bold uppercase tracking-wider">{alt.type}</div>
-                            <p className="text-xs mt-1 leading-relaxed">{alt.message}</p>
+                            <p className="text-xs mt-0.5 leading-relaxed">{alt.message}</p>
                           </div>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-
-                <button 
-                  onClick={fetchWeather}
-                  className="w-full bg-neutral-900 hover:bg-neutral-850 border border-neutral-850 hover:border-neutral-700 text-neutral-300 font-semibold py-2.5 rounded-xl text-xs transition-colors mt-4"
-                >
-                  Refresh Sensors
-                </button>
               </div>
             </div>
 
-            {/* Quick metrics grid */}
+            {/* Metric Pills */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="glass border border-neutral-800 rounded-2xl p-5 flex items-center gap-4">
-                <div className="bg-neutral-900 p-2.5 rounded-xl border border-neutral-850 text-blue-400">
+              <div className="clean-card p-4 flex items-center gap-3 bg-white">
+                <div className="bg-sky-50 p-2.5 rounded-xl border border-sky-100 text-sky-600">
                   <Droplets className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Humidity</div>
-                  <div className="text-sm font-bold text-white mt-0.5">{data.humidity}%</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Humidity</div>
+                  <div className="text-sm font-bold text-slate-900 mt-0.5">{data.humidity}%</div>
                 </div>
               </div>
 
-              <div className="glass border border-neutral-800 rounded-2xl p-5 flex items-center gap-4">
-                <div className="bg-neutral-900 p-2.5 rounded-xl border border-neutral-850 text-primary">
+              <div className="clean-card p-4 flex items-center gap-3 bg-white">
+                <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-100 text-emerald-600">
                   <Wind className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Wind Speed</div>
-                  <div className="text-sm font-bold text-white mt-0.5">{data.wind_speed} km/h</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Wind Speed</div>
+                  <div className="text-sm font-bold text-slate-900 mt-0.5">{data.wind_speed} km/h</div>
                 </div>
               </div>
 
-              <div className="glass border border-neutral-800 rounded-2xl p-5 flex items-center gap-4">
-                <div className="bg-neutral-900 p-2.5 rounded-xl border border-neutral-850 text-emerald-400">
+              <div className="clean-card p-4 flex items-center gap-3 bg-white">
+                <div className="bg-amber-50 p-2.5 rounded-xl border border-amber-100 text-amber-600">
                   <Thermometer className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Wind Direction</div>
-                  <div className="text-sm font-bold text-white mt-0.5">{data.wind_direction}</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Wind Dir</div>
+                  <div className="text-sm font-bold text-slate-900 mt-0.5">{data.wind_direction}</div>
                 </div>
               </div>
 
-              <div className="glass border border-neutral-800 rounded-2xl p-5 flex items-center gap-4">
-                <div className="bg-neutral-900 p-2.5 rounded-xl border border-neutral-850 text-cyan-400">
+              <div className="clean-card p-4 flex items-center gap-3 bg-white">
+                <div className="bg-blue-50 p-2.5 rounded-xl border border-blue-100 text-blue-600">
                   <CloudRain className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Rain Chance</div>
-                  <div className="text-sm font-bold text-white mt-0.5">{data.rain_chance}%</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Rain Chance</div>
+                  <div className="text-sm font-bold text-slate-900 mt-0.5">{data.rain_chance}%</div>
                 </div>
               </div>
             </div>
 
-            {/* Forecast and advisory block */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Forecast & Advisory */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               
               {/* Forecast (Left) */}
-              <div className="lg:col-span-7 glass border border-neutral-800 rounded-3xl p-6 md:p-8">
-                <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-6">5-Day Meteorological Outlook</h3>
-                <div className="space-y-4">
+              <div className="lg:col-span-7 clean-card p-6 bg-white shadow-sm">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">5-Day Forecast Outlook</h3>
+                <div className="space-y-2.5">
                   {data.forecast.map((fc, idx) => (
                     <div 
                       key={idx}
-                      className="p-4 rounded-xl bg-neutral-900/40 border border-neutral-850/80 hover:border-neutral-800 flex items-center justify-between transition-colors"
+                      className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs"
                     >
-                      <span className="font-bold text-sm text-white w-12">{fc.day}</span>
-                      <div className="flex items-center gap-3 w-40">
+                      <span className="font-bold text-slate-800 w-12">{fc.day}</span>
+                      <div className="flex items-center gap-2.5 w-40">
                         {getWeatherIcon(fc.condition)}
-                        <span className="text-xs text-neutral-400 truncate">{fc.condition}</span>
+                        <span className="text-slate-600 truncate">{fc.condition}</span>
                       </div>
-                      <div className="flex items-center gap-8 font-semibold">
-                        <span className="text-xs text-neutral-500">{fc.rain_chance}% Rain</span>
-                        <span className="text-sm text-primary">{fc.temp}°C</span>
+                      <div className="flex items-center gap-6 font-semibold">
+                        <span className="text-slate-400">{fc.rain_chance}% Rain</span>
+                        <span className="text-slate-900 font-bold">{fc.temp}°C</span>
                       </div>
                     </div>
                   ))}
@@ -296,20 +286,20 @@ export default function WeatherPage() {
               </div>
 
               {/* Advisory (Right) */}
-              <div className="lg:col-span-5 glass border border-neutral-800 rounded-3xl p-6 md:p-8">
-                <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-6 flex items-center gap-1.5">
-                  <Lightbulb className="h-4 w-4 text-primary animate-pulse" />
-                  AgriNexus Crop Advisory
+              <div className="lg:col-span-5 clean-card p-6 bg-white shadow-sm">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                  <Lightbulb className="h-4 w-4 text-emerald-600" />
+                  Agronomic Advisories
                 </h3>
                 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {data.advisories.map((adv, idx) => (
                     <div 
                       key={idx}
-                      className="p-4 rounded-2xl bg-neutral-900/60 border border-neutral-850 flex items-start gap-3.5"
+                      className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-100 flex items-start gap-3"
                     >
-                      <CheckCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                      <p className="text-xs md:text-sm text-neutral-300 leading-relaxed font-medium">{adv}</p>
+                      <CheckCircle2 className="h-4 w-4 text-emerald-700 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-emerald-900 leading-relaxed font-medium">{adv}</p>
                     </div>
                   ))}
                 </div>

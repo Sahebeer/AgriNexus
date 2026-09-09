@@ -20,6 +20,7 @@ interface AuthState {
   error: string | null;
   
   login: (email: string, password: string) => Promise<boolean>;
+  adminLogin: (email: string, password: string) => Promise<boolean>;
   register: (payload: {
     email: string;
     password: string;
@@ -76,6 +77,35 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return true;
     } catch (err: any) {
       const errMsg = err.response?.data?.detail || "Invalid email or password";
+      set({ isLoading: false, error: errMsg });
+      return false;
+    }
+  },
+
+  adminLogin: async (email, password) => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await api.post("/api/v1/admin/login", { email, password });
+      const { access_token } = res.data;
+      localStorage.setItem("agrinexus_token", access_token);
+
+      const userRes = await api.get("/api/v1/auth/me", {
+        headers: { Authorization: `Bearer ${access_token}` },
+      });
+
+      set({
+        token: access_token,
+        user: userRes.data,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      });
+      return true;
+    } catch (err: any) {
+      const errMsg =
+        err.response?.data?.detail?.message ||
+        err.response?.data?.detail ||
+        "Invalid administrative credentials or insufficient privileges.";
       set({ isLoading: false, error: errMsg });
       return false;
     }

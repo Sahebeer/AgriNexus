@@ -13,6 +13,7 @@ yarn-error.log*
 venv/
 .venv/
 env/
+apps/backend/.deps/
 __pycache__/
 *.pyc
 *.pyo
@@ -32,6 +33,13 @@ postgres-data/
 *.db
 *.sqlite3
 
+# ML Checkpoints
+ml/**/checkpoints/*.pt
+ml/**/checkpoints/*.pth
+ml/**/checkpoints/*.joblib
+apps/backend/app/services/vision/models/*.joblib
+ml/datasets/raw/
+
 # Environment Variables & Secrets
 .env
 .env.local
@@ -46,3 +54,7 @@ postgres-data/
 # OS Specific
 .DS_Store
 Thumbs.db
+
+# October (generated — context bus / browser MCP)
+.codex/config.toml
+.codex/hooks.json

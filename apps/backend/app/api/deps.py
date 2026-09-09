@@ -6,7 +6,6 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.security import pwd_context
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.user import TokenPayload
@@ -48,3 +47,15 @@ def get_current_active_superuser(
             status_code=400, detail="The user doesn't have enough privileges"
         )
     return current_user
+
+def get_current_active_admin(
+    current_user: User = Depends(get_current_active_user),
+) -> User:
+    role = (current_user.role or "").lower()
+    if role != "admin" and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrative privileges required to access this resource."
+        )
+    return current_user
+

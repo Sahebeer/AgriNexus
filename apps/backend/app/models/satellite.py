@@ -15,12 +15,34 @@ class SatelliteObservation(Base):
     farm_id = Column(Integer, ForeignKey("farms.id", ondelete="CASCADE"), nullable=False, index=True)
     
     observation_date = Column(Date, nullable=False, index=True)
-    ndvi = Column(Float, nullable=False)           # Normalized Difference Vegetation Index (-1 to 1)
-    ndwi = Column(Float, nullable=False)           # Normalized Difference Water Index (-1 to 1)
+    ndvi = Column(Float, nullable=True)            # Normalized Difference Vegetation Index (-1 to 1)
+    ndwi = Column(Float, nullable=True)            # Normalized Difference Water Index (-1 to 1)
     cloud_cover = Column(Float, default=0.0)       # Cloud cover percentage
-    source = Column(String, default="sentinel-2")  # "sentinel-2" | "simulated"
+    source = Column(String, default="sentinel-1")  # "sentinel-1" | "sentinel-2" | "simulated"
+
+    # Sentinel-1 SAR Radar Fields
+    satellite = Column(String, default="Sentinel-1", nullable=True)
+    acquisition_date = Column(Date, nullable=True)
+    orbit = Column(String, default="ASCENDING", nullable=True)  # ASCENDING | DESCENDING
+    polarization = Column(String, default="VV+VH", nullable=True)
+    vv = Column(Float, nullable=True)              # Backscatter VV in dB
+    vh = Column(Float, nullable=True)              # Backscatter VH in dB
+    vv_vh_ratio = Column(Float, nullable=True)     # VV/VH ratio in dB
+    processing_status = Column(String, default="calibrated", nullable=True)
+    model_prediction = Column(String, nullable=True) # normal | vegetation_stress | excess_moisture | etc.
+    model_confidence = Column(Float, nullable=True)
+    raw_asset_reference = Column(String, nullable=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Property alias for field_id <-> farm_id
+    @property
+    def field_id(self) -> int:
+        return self.farm_id
+
+    @field_id.setter
+    def field_id(self, val: int):
+        self.farm_id = val
 
     # Relationship
     farm = relationship("Farm")

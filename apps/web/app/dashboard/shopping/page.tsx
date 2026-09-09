@@ -30,8 +30,6 @@ import {
   Check,
 } from "lucide-react";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 interface ShoppingItem {
   id: number;
   category: string;
@@ -66,8 +64,6 @@ interface ListSummary {
   estimated_total_cost: number;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const CROPS = [
   "Rice", "Wheat", "Corn", "Mustard", "Soybean", "Groundnut", "Cotton",
   "Sugarcane", "Tomato", "Potato", "Onion", "Chickpeas (Gram)",
@@ -89,83 +85,43 @@ const GROWTH_STAGES = [
 ];
 
 const CATEGORY_META: Record<string, { icon: React.FC<any>; color: string }> = {
-  "Seeds":           { icon: Sprout,       color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-  "Fertilizers":     { icon: Beaker,       color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
-  "Micronutrients":  { icon: FlaskConical, color: "text-violet-400 bg-violet-500/10 border-violet-500/20" },
-  "Pesticides":      { icon: Bug,          color: "text-red-400 bg-red-500/10 border-red-500/20" },
-  "Tools":           { icon: Wrench,       color: "text-amber-400 bg-amber-500/10 border-amber-500/20" },
-  "Soil Amendments": { icon: Leaf,         color: "text-lime-400 bg-lime-500/10 border-lime-500/20" },
+  "Seeds":           { icon: Sprout,       color: "text-emerald-700 bg-emerald-50 border-emerald-200" },
+  "Fertilizers":     { icon: Beaker,       color: "text-blue-700 bg-blue-50 border-blue-200" },
+  "Micronutrients":  { icon: FlaskConical, color: "text-purple-700 bg-purple-50 border-purple-200" },
+  "Pesticides":      { icon: Bug,          color: "text-rose-700 bg-rose-50 border-rose-200" },
+  "Tools":           { icon: Wrench,       color: "text-amber-700 bg-amber-50 border-amber-200" },
+  "Soil Amendments": { icon: Leaf,         color: "text-teal-700 bg-teal-50 border-teal-200" },
 };
 
 function getCategoryMeta(cat: string) {
-  return CATEGORY_META[cat] ?? { icon: Package, color: "text-neutral-400 bg-neutral-800/40 border-neutral-700" };
+  return CATEGORY_META[cat] ?? { icon: Package, color: "text-slate-700 bg-slate-100 border-slate-200" };
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
-export default function ShoppingPage() {
+export default function ShoppingListPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { showToast } = useToastStore();
 
-  // View
   const [view, setView] = useState<"wizard" | "list" | "history">("wizard");
-
-  // Wizard
   const [wizardStep, setWizardStep] = useState(0);
-  const [crop, setCrop] = useState("");
-  const [farmSize, setFarmSize] = useState(1.5);
+
+  // Wizard fields
+  const [crop, setCrop] = useState("Wheat");
+  const [farmSize, setFarmSize] = useState(2.0);
   const [soilType, setSoilType] = useState("Loam");
-  const [season, setSeason] = useState("Kharif");
-  const [growthStage, setGrowthStage] = useState(GROWTH_STAGES[0]);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [season, setSeason] = useState("Rabi");
+  const [growthStage, setGrowthStage] = useState("Pre-Sowing / Land Preparation");
 
-  // Active list
+  // Output list state
   const [activeList, setActiveList] = useState<ShoppingList | null>(null);
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
-
-  // History
   const [history, setHistory] = useState<ListSummary[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Pre-fill parameters from central database fields registry
-  useEffect(() => {
-    const prefillFromFarms = async () => {
-      try {
-        const res = await api.get("/api/v1/farms/");
-        if (res.data && res.data.length > 0) {
-          const f = res.data[0];
-          if (f.current_crop) setCrop(f.current_crop);
-          if (f.area) setFarmSize(f.area);
-          if (f.soil_reports?.[0]?.soil_texture) {
-            setSoilType(f.soil_reports[0].soil_texture);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to prefill shopping parameters from database:", err);
-      }
-    };
-    if (user) {
-      prefillFromFarms();
-    }
-  }, [user]);
-
-  const loadHistory = async () => {
-    setIsLoadingHistory(true);
-    try {
-      const res = await api.get("/api/v1/shopping/");
-      setHistory(res.data);
-    } catch {
-      showToast("Failed to load history", "error");
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  };
-
   const handleGenerate = async () => {
-    if (!crop) { showToast("Please select a crop first", "error"); return; }
     setIsGenerating(true);
     try {
       const res = await api.post("/api/v1/shopping/generate", {
@@ -177,11 +133,23 @@ export default function ShoppingPage() {
       });
       setActiveList(res.data);
       setView("list");
-      showToast("Shopping list generated!", "success");
+      showToast("Smart shopping list generated!", "success");
     } catch {
-      showToast("Generation failed. Please try again.", "error");
+      showToast("Failed to generate shopping list", "error");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const loadHistory = async () => {
+    setIsLoadingHistory(true);
+    try {
+      const res = await api.get("/api/v1/shopping/history");
+      setHistory(res.data);
+    } catch {
+      showToast("Failed to load list history", "error");
+    } finally {
+      setIsLoadingHistory(false);
     }
   };
 
@@ -223,7 +191,6 @@ export default function ShoppingPage() {
 
   const handlePrint = () => window.print();
 
-  // Group items by category
   const grouped = activeList
     ? activeList.items.reduce((acc, item) => {
         (acc[item.category] = acc[item.category] ?? []).push(item);
@@ -237,49 +204,48 @@ export default function ShoppingPage() {
     .filter(i => i.is_purchased)
     .reduce((s, i) => s + i.total_cost, 0) ?? 0;
 
-  // ─── Wizard render ──────────────────────────────────────────────────────────
   const wizardSteps = [
     { label: "Crop", icon: Sprout },
-    { label: "Farm Details", icon: Leaf },
+    { label: "Farm Scale", icon: Leaf },
     { label: "Season & Stage", icon: Sparkles },
   ];
 
   return (
-    <div className="min-h-screen bg-neutral-950 flex flex-col print:bg-white">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans pb-16 print:bg-white">
       {/* Header */}
-      <header className="glass sticky top-0 z-40 border-b border-neutral-800 print:hidden">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 print:hidden">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => view !== "wizard" ? setView("wizard") : router.push("/dashboard")}
-              className="text-neutral-400 hover:text-white p-2 rounded-xl hover:bg-neutral-800 transition-all"
+              className="text-slate-500 hover:text-slate-900 p-2 rounded-xl hover:bg-slate-100 border border-slate-200 transition-all"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
             </button>
             <div className="flex items-center gap-3">
-              <div className="bg-primary/10 p-2 rounded-xl border border-primary/20">
-                <ShoppingCart className="h-5 w-5 text-primary" />
+              <div className="bg-teal-50 text-teal-600 p-2 rounded-xl border border-teal-100">
+                <ShoppingCart className="h-5 w-5" />
               </div>
               <div>
-                <span className="font-display font-bold text-white text-lg">Smart Shopping List</span>
-                <p className="text-[10px] text-neutral-500 -mt-0.5 font-semibold uppercase tracking-wider">AI-Powered Farm Inputs Generator</p>
+                <span className="font-display font-bold text-slate-900 text-base">Farm Inputs & Shopping List</span>
+                <p className="text-xs text-slate-500">Scaled Input Calculator & Checklist</p>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={() => { loadHistory(); setView("history"); }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-neutral-800 text-neutral-300 hover:text-white hover:border-neutral-700 text-xs font-semibold transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all shadow-sm"
             >
-              <ClipboardList className="h-4 w-4" />
-              My Lists
+              <ClipboardList className="h-3.5 w-3.5" />
+              Saved Lists
             </button>
             {view === "list" && (
               <button
                 onClick={handlePrint}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs font-semibold hover:bg-primary/20 transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 transition-all"
               >
-                <Printer className="h-4 w-4" />
+                <Printer className="h-3.5 w-3.5" />
                 Print / Export
               </button>
             )}
@@ -293,7 +259,7 @@ export default function ShoppingPage() {
         {view === "wizard" && (
           <div className="max-w-2xl mx-auto">
             {/* Step indicators */}
-            <div className="flex items-center justify-center gap-0 mb-10">
+            <div className="flex items-center justify-center gap-0 mb-8">
               {wizardSteps.map((s, i) => {
                 const Icon = s.icon;
                 const active = wizardStep === i;
@@ -302,42 +268,42 @@ export default function ShoppingPage() {
                   <React.Fragment key={i}>
                     <button
                       onClick={() => i <= wizardStep && setWizardStep(i)}
-                      className={`flex flex-col items-center gap-1.5 group`}
+                      className="flex flex-col items-center gap-1 group"
                     >
-                      <div className={`h-10 w-10 rounded-full border-2 flex items-center justify-center transition-all ${
-                        done ? "bg-primary border-primary" :
-                        active ? "bg-primary/10 border-primary" :
-                        "bg-neutral-900 border-neutral-700"
+                      <div className={`h-9 w-9 rounded-full border flex items-center justify-center transition-all ${
+                        done ? "bg-emerald-600 border-emerald-600 text-white" :
+                        active ? "bg-emerald-50 border-emerald-600 text-emerald-700 font-bold" :
+                        "bg-white border-slate-200 text-slate-400"
                       }`}>
-                        {done ? <Check className="h-5 w-5 text-neutral-950" /> : <Icon className={`h-4 w-4 ${active ? "text-primary" : "text-neutral-500"}`} />}
+                        {done ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
                       </div>
-                      <span className={`text-[10px] font-bold uppercase tracking-wider ${active || done ? "text-neutral-200" : "text-neutral-600"}`}>{s.label}</span>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${active || done ? "text-slate-800" : "text-slate-400"}`}>{s.label}</span>
                     </button>
                     {i < wizardSteps.length - 1 && (
-                      <div className={`h-0.5 w-16 mx-2 mb-5 rounded-full ${wizardStep > i ? "bg-primary" : "bg-neutral-800"}`} />
+                      <div className={`h-0.5 w-16 mx-2 mb-4 rounded-full ${wizardStep > i ? "bg-emerald-600" : "bg-slate-200"}`} />
                     )}
                   </React.Fragment>
                 );
               })}
             </div>
 
-            <div className="glass border border-neutral-800 rounded-3xl p-8 animate-fade-in">
+            <div className="clean-card p-8 bg-white shadow-sm">
               {/* Step 0 — Crop */}
               {wizardStep === 0 && (
-                <div className="space-y-6">
+                <div className="space-y-5">
                   <div>
-                    <h2 className="font-display text-2xl font-bold text-white mb-1">Which crop are you growing?</h2>
-                    <p className="text-sm text-neutral-400">Select the primary crop to generate a tailored shopping list.</p>
+                    <h2 className="font-display text-xl font-bold text-slate-900 mb-1">Target Crop Selection</h2>
+                    <p className="text-xs text-slate-500">Select your crop to generate input requirements.</p>
                   </div>
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                     {CROPS.map(c => (
                       <button
                         key={c}
                         onClick={() => setCrop(c)}
-                        className={`px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all text-left ${
+                        className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all text-left ${
                           crop === c
-                            ? "bg-primary/10 border-primary text-primary"
-                            : "border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-neutral-200"
+                            ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                            : "border-slate-200 text-slate-700 hover:bg-slate-50"
                         }`}
                       >
                         {c}
@@ -347,7 +313,7 @@ export default function ShoppingPage() {
                   <button
                     onClick={() => { if (crop) setWizardStep(1); else showToast("Select a crop", "error"); }}
                     disabled={!crop}
-                    className="w-full bg-primary hover:bg-primary-600 disabled:opacity-40 text-neutral-950 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 text-xs transition-all shadow-sm"
                   >
                     Continue <ArrowRight className="h-4 w-4" />
                   </button>
@@ -356,35 +322,38 @@ export default function ShoppingPage() {
 
               {/* Step 1 — Farm Details */}
               {wizardStep === 1 && (
-                <div className="space-y-6">
+                <div className="space-y-5">
                   <div>
-                    <h2 className="font-display text-2xl font-bold text-white mb-1">Farm Details</h2>
-                    <p className="text-sm text-neutral-400">Quantities will be automatically scaled to your farm size.</p>
+                    <h2 className="font-display text-xl font-bold text-slate-900 mb-1">Farm Scale & Soil Profile</h2>
+                    <p className="text-xs text-slate-500">Calculations scale seed and fertilizer dosage to your field acreage.</p>
                   </div>
 
-                  <div className="space-y-5">
+                  <div className="space-y-4">
                     <div>
-                      <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-3">
-                        Farm Size — <span className="text-primary">{farmSize} Hectares</span>
-                      </label>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                          Acreage
+                        </label>
+                        <span className="text-xs font-bold text-emerald-700">{farmSize} Hectares</span>
+                      </div>
                       <input
                         type="range" min={0.5} max={50} step={0.5}
                         value={farmSize}
                         onChange={e => setFarmSize(parseFloat(e.target.value))}
-                        className="w-full accent-primary"
+                        className="w-full accent-emerald-600"
                       />
-                      <div className="flex justify-between text-[10px] text-neutral-600 mt-1 font-semibold">
+                      <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-medium">
                         <span>0.5 Ha</span><span>50 Ha</span>
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Soil Type</label>
+                      <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Soil Classification</label>
                       <div className="grid grid-cols-3 gap-2">
                         {SOIL_TYPES.map(s => (
                           <button key={s} onClick={() => setSoilType(s)}
                             className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all ${
-                              soilType === s ? "bg-primary/10 border-primary text-primary" : "border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200"
+                              soilType === s ? "bg-emerald-50 border-emerald-300 text-emerald-800" : "border-slate-200 text-slate-700 hover:bg-slate-50"
                             }`}
                           >{s}</button>
                         ))}
@@ -392,9 +361,9 @@ export default function ShoppingPage() {
                     </div>
                   </div>
 
-                  <div className="flex gap-3">
-                    <button onClick={() => setWizardStep(0)} className="flex-1 py-3 rounded-xl border border-neutral-800 text-neutral-300 text-xs font-semibold hover:bg-neutral-900 transition-all">Back</button>
-                    <button onClick={() => setWizardStep(2)} className="flex-[2] bg-primary hover:bg-primary-600 text-neutral-950 font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-xs transition-all">
+                  <div className="flex gap-3 pt-2">
+                    <button onClick={() => setWizardStep(0)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-all">Back</button>
+                    <button onClick={() => setWizardStep(2)} className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl flex items-center justify-center gap-1.5 text-xs transition-all shadow-sm">
                       Continue <ArrowRight className="h-4 w-4" />
                     </button>
                   </div>
@@ -403,20 +372,20 @@ export default function ShoppingPage() {
 
               {/* Step 2 — Season & Stage */}
               {wizardStep === 2 && (
-                <div className="space-y-6">
+                <div className="space-y-5">
                   <div>
-                    <h2 className="font-display text-2xl font-bold text-white mb-1">Season & Growth Stage</h2>
-                    <p className="text-sm text-neutral-400">This helps tailor inputs to your current farming phase.</p>
+                    <h2 className="font-display text-xl font-bold text-slate-900 mb-1">Season & Current Phase</h2>
+                    <p className="text-xs text-slate-500">Aligns input recommendations to your crop phenology.</p>
                   </div>
 
-                  <div className="space-y-5">
+                  <div className="space-y-4">
                     <div>
-                      <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Growing Season</label>
-                      <div className="grid grid-cols-3 gap-3">
+                      <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Season</label>
+                      <div className="grid grid-cols-3 gap-2">
                         {SEASONS.map(s => (
                           <button key={s} onClick={() => setSeason(s)}
-                            className={`py-3 rounded-xl text-xs font-bold border transition-all ${
-                              season === s ? "bg-primary/10 border-primary text-primary" : "border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200"
+                            className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                              season === s ? "bg-emerald-50 border-emerald-300 text-emerald-800" : "border-slate-200 text-slate-700 hover:bg-slate-50"
                             }`}
                           >{s}</button>
                         ))}
@@ -424,15 +393,15 @@ export default function ShoppingPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Current Growth Stage</label>
-                      <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Current Stage</label>
+                      <div className="space-y-1.5">
                         {GROWTH_STAGES.map(g => (
                           <button key={g} onClick={() => setGrowthStage(g)}
-                            className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl border text-xs font-semibold text-left transition-all ${
-                              growthStage === g ? "bg-primary/10 border-primary text-primary" : "border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200"
+                            className={`w-full flex items-center gap-2.5 py-2.5 px-3.5 rounded-xl border text-xs font-semibold text-left transition-all ${
+                              growthStage === g ? "bg-emerald-50 border-emerald-300 text-emerald-800" : "border-slate-200 text-slate-700 hover:bg-slate-50"
                             }`}
                           >
-                            {growthStage === g ? <CheckSquare className="h-4 w-4 flex-shrink-0" /> : <Square className="h-4 w-4 flex-shrink-0" />}
+                            {growthStage === g ? <CheckSquare className="h-4 w-4 text-emerald-600 flex-shrink-0" /> : <Square className="h-4 w-4 text-slate-400 flex-shrink-0" />}
                             {g}
                           </button>
                         ))}
@@ -441,27 +410,27 @@ export default function ShoppingPage() {
                   </div>
 
                   {/* Summary card */}
-                  <div className="p-4 rounded-2xl bg-neutral-900/60 border border-neutral-800 space-y-2 text-xs">
-                    <div className="text-neutral-500 font-bold uppercase tracking-widest text-[10px] mb-3">Generation Summary</div>
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-xs">
+                    <div className="text-slate-400 font-bold uppercase tracking-wider text-[10px] mb-2">Input Criteria Summary</div>
                     {[
-                      ["Crop", crop], ["Farm Size", `${farmSize} Hectares`],
-                      ["Soil Type", soilType], ["Season", season], ["Stage", growthStage],
+                      ["Crop", crop], ["Acreage", `${farmSize} Hectares`],
+                      ["Soil", soilType], ["Season", season], ["Phase", growthStage],
                     ].map(([k, v]) => (
-                      <div key={k} className="flex justify-between">
-                        <span className="text-neutral-500">{k}</span>
-                        <span className="text-neutral-200 font-semibold">{v}</span>
+                      <div key={k} className="flex justify-between text-xs">
+                        <span className="text-slate-500">{k}</span>
+                        <span className="text-slate-900 font-semibold">{v}</span>
                       </div>
                     ))}
                   </div>
 
-                  <div className="flex gap-3">
-                    <button onClick={() => setWizardStep(1)} className="flex-1 py-3 rounded-xl border border-neutral-800 text-neutral-300 text-xs font-semibold hover:bg-neutral-900 transition-all">Back</button>
+                  <div className="flex gap-3 pt-2">
+                    <button onClick={() => setWizardStep(1)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-all">Back</button>
                     <button
                       onClick={handleGenerate}
                       disabled={isGenerating}
-                      className="flex-[2] bg-primary hover:bg-primary-600 disabled:opacity-50 text-neutral-950 font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-sm transition-all shadow-[0_0_20px_rgba(0,200,117,0.2)]"
+                      className="flex-[2] bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl flex items-center justify-center gap-1.5 text-xs transition-all shadow-sm"
                     >
-                      {isGenerating ? <><RefreshCw className="h-4 w-4 animate-spin" />Generating...</> : <><Sparkles className="h-4 w-4" />Generate Shopping List</>}
+                      {isGenerating ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" />Calculating...</> : <><Sparkles className="h-3.5 w-3.5" />Generate Shopping List</>}
                     </button>
                   </div>
                 </div>
@@ -474,46 +443,46 @@ export default function ShoppingPage() {
         {view === "list" && activeList && (
           <div ref={printRef} className="space-y-6">
             {/* List header */}
-            <div className="glass border border-neutral-800 rounded-3xl p-6 md:p-8">
+            <div className="clean-card p-6 md:p-8 bg-white shadow-sm">
               <div className="flex flex-col md:flex-row justify-between gap-6">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full uppercase tracking-wider">
                       {activeList.season || "All Seasons"}
                     </span>
-                    <span className="text-[10px] font-bold text-neutral-500 bg-neutral-900 border border-neutral-800 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                      {activeList.growth_stage || "All Stages"}
+                    <span className="text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      {activeList.growth_stage || "General"}
                     </span>
                   </div>
-                  <h1 className="font-display text-2xl font-bold text-white">{activeList.name}</h1>
-                  <p className="text-neutral-400 text-sm mt-1">{activeList.soil_type} soil · {activeList.farm_size} Hectares</p>
+                  <h1 className="font-display text-2xl font-bold text-slate-900">{activeList.name}</h1>
+                  <p className="text-slate-500 text-xs mt-1">{activeList.soil_type} soil · {activeList.farm_size} Hectares</p>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center p-3 rounded-2xl bg-neutral-900/60 border border-neutral-800">
-                    <div className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold mb-1">Total Items</div>
-                    <div className="text-xl font-bold text-white">{totalItems}</div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="text-center p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wider font-bold mb-0.5">Items</div>
+                    <div className="text-lg font-bold text-slate-900">{totalItems}</div>
                   </div>
-                  <div className="text-center p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-                    <div className="text-[10px] text-emerald-400 uppercase tracking-widest font-bold mb-1">Purchased</div>
-                    <div className="text-xl font-bold text-emerald-400">{purchasedCount}</div>
+                  <div className="text-center p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                    <div className="text-[10px] text-emerald-800 uppercase tracking-wider font-bold mb-0.5">Purchased</div>
+                    <div className="text-lg font-bold text-emerald-800">{purchasedCount}</div>
                   </div>
-                  <div className="text-center p-3 rounded-2xl bg-primary/5 border border-primary/15">
-                    <div className="text-[10px] text-primary uppercase tracking-widest font-bold mb-1">Est. Cost</div>
-                    <div className="text-lg font-bold text-primary">₹{activeList.estimated_total_cost.toLocaleString("en-IN")}</div>
+                  <div className="text-center p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wider font-bold mb-0.5">Est. Cost</div>
+                    <div className="text-lg font-bold text-emerald-700">₹{activeList.estimated_total_cost.toLocaleString("en-IN")}</div>
                   </div>
                 </div>
               </div>
 
               {/* Progress bar */}
-              <div className="mt-6">
-                <div className="flex justify-between text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">
-                  <span>Progress</span>
+              <div className="mt-5 pt-4 border-t border-slate-100">
+                <div className="flex justify-between text-[11px] font-semibold text-slate-500 mb-1.5">
+                  <span>Shopping Progress</span>
                   <span>{purchasedCount}/{totalItems} items · ₹{purchasedCost.toLocaleString("en-IN")} spent</span>
                 </div>
-                <div className="h-2 bg-neutral-800 rounded-full overflow-hidden">
+                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-primary rounded-full transition-all duration-500"
+                    className="h-full bg-emerald-600 rounded-full transition-all duration-300"
                     style={{ width: totalItems > 0 ? `${(purchasedCount / totalItems) * 100}%` : "0%" }}
                   />
                 </div>
@@ -528,64 +497,62 @@ export default function ShoppingPage() {
               const catPurchased = items.filter(i => i.is_purchased).length;
 
               return (
-                <div key={cat} className="glass border border-neutral-800 rounded-3xl overflow-hidden">
+                <div key={cat} className="clean-card bg-white overflow-hidden shadow-sm">
                   {/* Category header */}
                   <button
                     onClick={() => toggleCategory(cat)}
-                    className="w-full flex items-center justify-between p-5 hover:bg-neutral-900/40 transition-all"
+                    className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-all text-left"
                   >
                     <div className="flex items-center gap-3">
                       <div className={`p-2 rounded-xl border ${color}`}>
                         <Icon className="h-4 w-4" />
                       </div>
-                      <div className="text-left">
-                        <div className="font-bold text-white text-sm">{cat}</div>
-                        <div className="text-[10px] text-neutral-500 font-semibold mt-0.5">
+                      <div>
+                        <div className="font-bold text-slate-900 text-sm">{cat}</div>
+                        <div className="text-[11px] text-slate-400 font-medium">
                           {catPurchased}/{items.length} items · ₹{catTotal.toLocaleString("en-IN")}
                         </div>
                       </div>
                     </div>
-                    {collapsed ? <ChevronRight className="h-4 w-4 text-neutral-500" /> : <ChevronDown className="h-4 w-4 text-neutral-500" />}
+                    {collapsed ? <ChevronRight className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
                   </button>
 
                   {/* Items */}
                   {!collapsed && (
-                    <div className="border-t border-neutral-800/60 divide-y divide-neutral-800/40">
+                    <div className="border-t border-slate-100 divide-y divide-slate-100">
                       {items.map(item => (
                         <div
                           key={item.id}
-                          className={`flex items-start gap-4 p-5 transition-all ${item.is_purchased ? "opacity-50" : "hover:bg-neutral-900/20"}`}
+                          className={`flex items-start gap-3 p-4 transition-all ${item.is_purchased ? "bg-slate-50/60 opacity-60" : "hover:bg-slate-50/40"}`}
                         >
                           <button
                             onClick={() => toggleItem(item)}
                             className="mt-0.5 flex-shrink-0"
                           >
                             {item.is_purchased
-                              ? <CheckSquare className="h-5 w-5 text-primary" />
-                              : <Square className="h-5 w-5 text-neutral-600 hover:text-neutral-300 transition-colors" />
+                              ? <CheckSquare className="h-4 w-4 text-emerald-600" />
+                              : <Square className="h-4 w-4 text-slate-400 hover:text-slate-600" />
                             }
                           </button>
                           <div className="flex-1 min-w-0">
-                            <div className={`font-semibold text-sm ${item.is_purchased ? "line-through text-neutral-500" : "text-white"}`}>
+                            <div className={`font-semibold text-xs ${item.is_purchased ? "line-through text-slate-400" : "text-slate-900"}`}>
                               {item.name}
                             </div>
                             {item.description && (
-                              <div className="text-[11px] text-neutral-500 mt-0.5">{item.description}</div>
+                              <div className="text-[11px] text-slate-500 mt-0.5">{item.description}</div>
                             )}
-                            <div className="flex items-center gap-3 mt-2">
-                              <span className="text-xs font-bold text-neutral-300">
-                                {item.quantity} {item.unit}
-                              </span>
-                              <span className="text-[10px] text-neutral-600">×</span>
-                              <span className="text-xs text-neutral-400">₹{item.unit_cost}/{item.unit}</span>
+                            <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-600">
+                              <span className="font-semibold">{item.quantity} {item.unit}</span>
+                              <span className="text-slate-300">×</span>
+                              <span className="text-slate-500">₹{item.unit_cost}/{item.unit}</span>
                             </div>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <div className="text-sm font-bold text-primary">
+                            <div className="text-xs font-bold text-emerald-700">
                               ₹{item.total_cost.toLocaleString("en-IN")}
                             </div>
                             {item.is_purchased && (
-                              <div className="text-[10px] text-emerald-400 font-bold mt-0.5">✓ Purchased</div>
+                              <div className="text-[10px] text-emerald-700 font-bold mt-0.5">✓ Purchased</div>
                             )}
                           </div>
                         </div>
@@ -597,22 +564,22 @@ export default function ShoppingPage() {
             })}
 
             {/* Total footer */}
-            <div className="glass border border-primary/20 rounded-3xl p-6 bg-primary/5">
+            <div className="clean-card p-5 bg-emerald-50/50 border border-emerald-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <IndianRupee className="h-6 w-6 text-primary" />
+                  <IndianRupee className="h-5 w-5 text-emerald-700" />
                   <div>
-                    <div className="text-xs text-neutral-400 font-semibold uppercase tracking-wider">Estimated Total Investment</div>
-                    <div className="font-display text-2xl font-bold text-primary">
+                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Estimated Total Budget</div>
+                    <div className="font-display text-xl font-bold text-emerald-800">
                       ₹{activeList.estimated_total_cost.toLocaleString("en-IN")}
                     </div>
                   </div>
                 </div>
                 <button
                   onClick={() => { setWizardStep(0); setView("wizard"); }}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white text-xs font-semibold transition-all"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-sm transition-all"
                 >
-                  <Plus className="h-4 w-4" /> New List
+                  <Plus className="h-3.5 w-3.5" /> New Calculation
                 </button>
               </div>
             </div>
@@ -624,45 +591,45 @@ export default function ShoppingPage() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-display text-2xl font-bold text-white">My Shopping Lists</h2>
-                <p className="text-sm text-neutral-400 mt-1">Previously generated farming input lists</p>
+                <h2 className="font-display text-xl font-bold text-slate-900">Saved Shopping Lists</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Previously generated agricultural input budgets</p>
               </div>
               <button
                 onClick={() => { setWizardStep(0); setView("wizard"); }}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-neutral-950 text-xs font-bold hover:bg-primary-600 transition-all"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-all shadow-sm"
               >
-                <Plus className="h-4 w-4" /> New List
+                <Plus className="h-3.5 w-3.5" /> New List
               </button>
             </div>
 
             {isLoadingHistory ? (
               <div className="flex justify-center py-20">
-                <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+                <RefreshCw className="h-6 w-6 animate-spin text-emerald-600" />
               </div>
             ) : history.length === 0 ? (
-              <div className="glass border border-neutral-800 rounded-3xl p-16 text-center">
-                <ShoppingCart className="h-10 w-10 text-neutral-700 mx-auto mb-4" />
-                <h3 className="font-bold text-neutral-300 mb-2">No Lists Yet</h3>
-                <p className="text-xs text-neutral-500">Generate your first smart shopping list above.</p>
+              <div className="clean-card p-16 text-center bg-white shadow-sm">
+                <ShoppingCart className="h-8 w-8 text-slate-400 mx-auto mb-3" />
+                <h3 className="font-bold text-slate-800 text-sm mb-1">No Lists Saved</h3>
+                <p className="text-xs text-slate-500">Generate your first shopping list above.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {history.map(l => (
                   <button
                     key={l.id}
                     onClick={() => loadList(l.id)}
-                    className="glass border border-neutral-800 rounded-2xl p-6 text-left hover:border-neutral-600 hover:bg-neutral-900/20 transition-all group"
+                    className="clean-card clean-card-hover p-5 text-left bg-white shadow-sm group"
                   >
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
                         {l.season || "General"}
                       </span>
                     </div>
-                    <h3 className="font-bold text-white text-sm group-hover:text-primary transition-colors mb-1">{l.name}</h3>
-                    <p className="text-xs text-neutral-500">{l.farm_size} Ha</p>
-                    <div className="mt-4 pt-4 border-t border-neutral-800 flex items-center justify-between">
-                      <span className="text-xs text-neutral-400 font-semibold">Est. Total</span>
-                      <span className="text-sm font-bold text-primary">₹{l.estimated_total_cost.toLocaleString("en-IN")}</span>
+                    <h3 className="font-bold text-slate-900 text-sm group-hover:text-emerald-700 transition-colors mb-0.5">{l.name}</h3>
+                    <p className="text-xs text-slate-500">{l.farm_size} Ha</p>
+                    <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-xs text-slate-400">Est. Total</span>
+                      <span className="text-sm font-bold text-emerald-700">₹{l.estimated_total_cost.toLocaleString("en-IN")}</span>
                     </div>
                   </button>
                 ))}
@@ -676,9 +643,8 @@ export default function ShoppingPage() {
       <style>{`
         @media print {
           header, .print\\:hidden { display: none !important; }
-          body { background: white !important; }
-          .glass { background: white !important; border-color: #e5e7eb !important; }
-          * { color: black !important; }
+          body { background: white !important; color: black !important; }
+          .clean-card { background: white !important; border-color: #e2e8f0 !important; }
         }
       `}</style>
     </div>

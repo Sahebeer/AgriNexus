@@ -13,6 +13,7 @@ from app.models.scan import ScanLog
 from app.models.expense import Expense
 from app.models.calendar import CropCalendar
 from app.models.activity import ActivityLog
+from app.models.satellite import SatelliteObservation
 from app.services.advisor import generate_advisor_response
 from app.services.activity_logger import log_activity
 
@@ -162,6 +163,41 @@ def post_chat_message(
 
     # Database resolved farm management & soil health records
     farms = db.query(Farm).filter(Farm.user_id == current_user.id).order_by(Farm.created_at.desc()).all()
+    farm_ids = [f.id for f in farms]
+
+    # Query latest Sentinel-1 SAR observations for user's farms
+    sar_map = {}
+    if farm_ids:
+        sar_obs = (
+            db.query(SatelliteObservation)
+            .filter(SatelliteObservation.farm_id.in_(farm_ids))
+            .order_by(SatelliteObservation.observation_date.desc())
+            .all()
+        )
+        for obs in sar_obs:
+            if obs.farm_id not in sar_map:
+                rvi_val = None
+                if obs.vv is not None and obs.vh is not None:
+                    try:
+                        lin_vv = 10.0 ** (obs.vv / 10.0)
+                        lin_vh = 10.0 ** (obs.vh / 10.0)
+                        rvi_val = round((4.0 * lin_vh) / (lin_vv + lin_vh), 3) if (lin_vv + lin_vh) > 0 else None
+                    except Exception:
+                        pass
+                sar_map[obs.farm_id] = {
+                    "field_id": obs.farm_id,
+                    "date": obs.observation_date.strftime("%Y-%m-%d"),
+                    "satellite": obs.satellite or "Sentinel-1",
+                    "orbit": obs.orbit or "ASCENDING",
+                    "polarization": obs.polarization or "VV+VH",
+                    "vv": round(obs.vv, 2) if obs.vv is not None else None,
+                    "vh": round(obs.vh, 2) if obs.vh is not None else None,
+                    "vv_vh_ratio": round(obs.vv_vh_ratio, 2) if obs.vv_vh_ratio is not None else None,
+                    "rvi": rvi_val,
+                    "condition": obs.model_prediction or "calibrated",
+                    "model_prediction": obs.model_prediction or "calibrated"
+                }
+
     farms_list = []
     for f in farms:
         latest_soil = f.soil_reports[0] if f.soil_reports else None
@@ -180,7 +216,9 @@ def post_chat_message(
             "source": latest_soil.source
         } if latest_soil else None
 
+        farm_sar = sar_map.get(f.id)
         farms_list.append({
+            "id": f.id,
             "name": f.name,
             "size": f.area,
             "area_unit": f.area_unit,
@@ -191,13 +229,15 @@ def post_chat_message(
             "crop": f.current_crop,
             "sow_date": str(f.sowing_date) if f.sowing_date else None,
             "irrigation_method": f.irrigation_method,
-            "soil_health": latest_soil_dict
+            "soil_health": latest_soil_dict,
+            "sar_telemetry": farm_sar
         })
 
     # Combine UI context with database resolved logs
     enriched_context = message_in.farmer_context or {}
     enriched_context.update({
         "farms": farms_list,
+        "sar_intelligence": list(sar_map.values()),
         "scans": scans_list,
         "expenses": expenses_list,
         "calendars": calendars_list,

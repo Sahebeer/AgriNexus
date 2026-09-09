@@ -1,3 +1,11 @@
+import sys
+from pathlib import Path
+
+# Ensure project root is in sys.path for ml package access
+root_dir = Path(__file__).resolve().parents[3]
+if str(root_dir) not in sys.path:
+    sys.path.insert(0, str(root_dir))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -14,7 +22,12 @@ from app.api.activity import router as activity_router
 from app.api.expenses import router as expenses_router
 from app.api.mandi import router as mandi_router
 from app.api.farms import router as farms_router
+from app.api.satellite import router as satellite_router
+from app.api.satellite_maps import router as satellite_maps_router
+from app.api.admin import router as admin_router
 from app.db.database import engine, Base
+from app.db.database import SessionLocal
+from app.models.user import User # For schema bootstrapping
 from app.models.chat import ChatMessage, ChatMessageFeedback # For schema bootstrapping
 from app.models.scan import ScanLog # For schema bootstrapping
 from app.models.shopping import ShoppingList, ShoppingListItem # For schema bootstrapping
@@ -29,6 +42,16 @@ from app.models.satellite import SatelliteObservation, EarthIntelligenceForecast
 try:
     Base.metadata.create_all(bind=engine)
     print("Database tables initialized successfully.")
+
+    # Provision the dedicated local demonstration account and its complete
+    # farm/Sentinel-1 SAR dataset on a fresh installation. The seed function
+    # is idempotent and startup deliberately limits it to that demo account.
+    from seed_demo_farm import seed_data_for_db
+    _demo_session = SessionLocal()
+    try:
+        seed_data_for_db(_demo_session, include_all_users=False)
+    finally:
+        _demo_session.close()
 except Exception as e:
     print(f"Database initialization failed or deferred: {e}")
 
@@ -59,6 +82,9 @@ app.include_router(activity_router, prefix=f"{settings.API_V1_STR}/activity", ta
 app.include_router(expenses_router, prefix=f"{settings.API_V1_STR}/expenses", tags=["expenses"])
 app.include_router(mandi_router, prefix=f"{settings.API_V1_STR}/mandi", tags=["mandi"])
 app.include_router(farms_router, prefix=f"{settings.API_V1_STR}/farms", tags=["farms"])
+app.include_router(satellite_router, prefix=f"{settings.API_V1_STR}/satellite", tags=["satellite"])
+app.include_router(satellite_maps_router, prefix=f"{settings.API_V1_STR}/satellite-maps", tags=["satellite-maps"])
+app.include_router(admin_router, prefix=f"{settings.API_V1_STR}/admin", tags=["admin"])
 
 @app.get("/")
 def root_redirect():

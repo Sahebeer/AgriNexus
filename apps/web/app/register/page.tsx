@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "../../store/authStore";
-import { Sprout, User, Lock, Mail, Phone, MapPin, Shield, AlertTriangle, ArrowRight, CheckCircle } from "lucide-react";
+import { Sprout, User, Lock, Mail, Phone, MapPin, Shield, AlertTriangle, ArrowRight, CheckCircle2 } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -25,11 +25,10 @@ export default function RegisterPage() {
   const roles = [
     { value: "farmer", label: "Farmer / Farm Operator" },
     { value: "expert", label: "Agricultural Expert / Advisor" },
-    { value: "official", label: "Government official" },
+    { value: "official", label: "Government Official" },
     { value: "admin", label: "System Administrator" },
   ];
 
-  // List of states in India (as default geo support for schemes matching)
   const states = [
     "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", 
     "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", 
@@ -72,87 +71,80 @@ export default function RegisterPage() {
       setIsSuccess(true);
       setTimeout(() => {
         router.push("/login");
-      }, 2500);
+      }, 2000);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center px-6 py-24 relative bg-neutral-950">
+    <div className="min-h-screen flex flex-col justify-center items-center px-6 py-20 bg-slate-50 text-slate-900 font-sans">
       {/* Header */}
-      <header className="glass fixed top-0 w-full z-50 border-b border-neutral-800">
+      <header className="fixed top-0 w-full z-50 bg-white/85 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="bg-primary/10 p-2 rounded-xl border border-primary/20 group-hover:border-primary/40 transition-colors">
-              <Sprout className="h-6 w-6 text-primary" />
+          <Link href="/" className="flex items-center gap-3">
+            <div className="bg-emerald-50 text-emerald-700 p-2 rounded-xl border border-emerald-100">
+              <Sprout className="h-5 w-5" />
             </div>
-            <span className="font-display font-bold text-xl tracking-tight bg-gradient-to-r from-neutral-50 to-neutral-400 bg-clip-text text-transparent">
-              AgriNexus <span className="text-primary">AI</span>
+            <span className="font-display font-bold text-lg text-slate-900">
+              AgriNexus
             </span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-neutral-400">
-            <Link href="/#features" className="hover:text-primary transition-colors">OS Modules</Link>
-            <Link href="/#platform" className="hover:text-primary transition-colors">AI Core</Link>
-            <Link href="/#schemes" className="hover:text-primary transition-colors">Schemes</Link>
-            <Link href="/#docs" className="hover:text-primary transition-colors">System Docs</Link>
-          </nav>
-
           <div className="flex items-center gap-4">
-            <span className="text-xs text-neutral-500 hidden sm:inline">Already registered?</span>
+            <span className="text-xs text-slate-500 hidden sm:inline">Already registered?</span>
             <Link 
               href="/login" 
-              className="bg-neutral-900 hover:bg-neutral-850 border border-neutral-800 hover:border-neutral-700 text-neutral-200 font-semibold px-4 py-2 rounded-xl text-sm transition-all duration-300 flex items-center gap-1 group"
+              className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-xl text-xs transition-all shadow-sm flex items-center gap-1"
             >
               Sign In
-              <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Background Glow */}
-      <div className="absolute w-[450px] h-[450px] bg-primary/5 rounded-full blur-[90px] bottom-1/4 right-1/3 pointer-events-none"></div>
-
-      <div className="w-full max-w-2xl z-10">
+      <div className="w-full max-w-2xl pt-12">
         <div className="flex flex-col items-center mb-6 text-center">
-          <h2 className="font-display text-3xl font-bold tracking-tight text-white">
-            Create AgriNexus Profile
+          <div className="bg-emerald-50 text-emerald-700 p-3 rounded-2xl border border-emerald-100 mb-3">
+            <Sprout className="h-6 w-6" />
+          </div>
+          <h2 className="font-display text-2xl font-bold tracking-tight text-slate-900">
+            Create Operator Profile
           </h2>
-          <p className="text-sm text-neutral-400 mt-2">
-            Establish a secure digital hub to manage soil insights, crops, and grants.
+          <p className="text-xs text-slate-500 mt-1">
+            Register to manage fields, track plant pathology, and discover agricultural subsidies
           </p>
         </div>
 
         {/* Card Frame */}
-        <div className="glass rounded-3xl p-8 border border-neutral-800 shadow-2xl relative overflow-hidden">
+        <div className="clean-card p-8 bg-white shadow-lg shadow-slate-200/50">
           {isSuccess ? (
-            <div className="py-12 flex flex-col items-center justify-center text-center animate-fade-in">
-              <div className="bg-primary/10 border border-primary/30 p-4 rounded-full text-primary mb-4 animate-bounce">
-                <CheckCircle className="h-12 w-12" />
+            <div className="py-10 flex flex-col items-center justify-center text-center">
+              <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-full text-emerald-600 mb-3">
+                <CheckCircle2 className="h-10 w-10" />
               </div>
-              <h3 className="text-2xl font-bold text-white mb-2">Registration Successful!</h3>
-              <p className="text-neutral-400 text-sm max-w-sm">
-                Your operator profile is now active. Redirecting you to the security login console...
+              <h3 className="text-xl font-bold text-slate-900 mb-1">Registration Complete!</h3>
+              <p className="text-slate-500 text-xs max-w-sm">
+                Your profile is active. Redirecting you to sign in...
               </p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 
                 {/* Full Name */}
                 <div>
-                  <label htmlFor="full_name" className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+                  <label htmlFor="full_name" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                     Full Name *
                   </label>
                   <div className="relative">
-                    <User className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-500" />
+                    <User className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                       id="full_name"
                       type="text"
                       value={formData.full_name}
                       onChange={handleInputChange}
-                      placeholder="John Doe"
-                      className="w-full bg-neutral-900/60 border border-neutral-850 hover:border-neutral-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl py-3 pl-12 pr-4 text-sm text-white placeholder-neutral-500 outline-none transition-all duration-300"
+                      placeholder="e.g. Ramesh Kumar"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-900 placeholder-slate-400 outline-none transition-all"
                       disabled={isLoading}
                     />
                   </div>
@@ -160,18 +152,18 @@ export default function RegisterPage() {
 
                 {/* Email Address */}
                 <div>
-                  <label htmlFor="email" className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+                  <label htmlFor="email" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                     Email Address *
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-500" />
+                    <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                       id="email"
                       type="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      placeholder="john@example.com"
-                      className="w-full bg-neutral-900/60 border border-neutral-850 hover:border-neutral-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl py-3 pl-12 pr-4 text-sm text-white placeholder-neutral-500 outline-none transition-all duration-300"
+                      placeholder="ramesh@example.com"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-900 placeholder-slate-400 outline-none transition-all"
                       disabled={isLoading}
                     />
                   </div>
@@ -179,18 +171,18 @@ export default function RegisterPage() {
 
                 {/* Password */}
                 <div>
-                  <label htmlFor="password" className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+                  <label htmlFor="password" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                     Password *
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-500" />
+                    <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                       id="password"
                       type="password"
                       value={formData.password}
                       onChange={handleInputChange}
                       placeholder="••••••••"
-                      className="w-full bg-neutral-900/60 border border-neutral-850 hover:border-neutral-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl py-3 pl-12 pr-4 text-sm text-white placeholder-neutral-500 outline-none transition-all duration-300"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-900 placeholder-slate-400 outline-none transition-all"
                       disabled={isLoading}
                     />
                   </div>
@@ -198,20 +190,20 @@ export default function RegisterPage() {
 
                 {/* Select Role */}
                 <div>
-                  <label htmlFor="role" className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
-                    Operator Role *
+                  <label htmlFor="role" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Role *
                   </label>
                   <div className="relative">
-                    <Shield className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-500" />
+                    <Shield className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <select
                       id="role"
                       value={formData.role}
                       onChange={handleInputChange}
-                      className="w-full bg-neutral-900/60 border border-neutral-850 hover:border-neutral-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl py-3 pl-12 pr-4 text-sm text-white placeholder-neutral-500 outline-none appearance-none transition-all duration-300"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-900 outline-none appearance-none transition-all"
                       disabled={isLoading}
                     >
                       {roles.map((r) => (
-                        <option key={r.value} value={r.value} className="bg-neutral-900 text-white">
+                        <option key={r.value} value={r.value}>
                           {r.label}
                         </option>
                       ))}
@@ -221,18 +213,18 @@ export default function RegisterPage() {
 
                 {/* Phone Number */}
                 <div>
-                  <label htmlFor="phone_number" className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+                  <label htmlFor="phone_number" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                     Phone Number
                   </label>
                   <div className="relative">
-                    <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-500" />
+                    <Phone className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                       id="phone_number"
                       type="text"
                       value={formData.phone_number}
                       onChange={handleInputChange}
-                      placeholder="+91 XXXXX XXXXX"
-                      className="w-full bg-neutral-900/60 border border-neutral-850 hover:border-neutral-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl py-3 pl-12 pr-4 text-sm text-white placeholder-neutral-500 outline-none transition-all duration-300"
+                      placeholder="+91 98765 43210"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-900 placeholder-slate-400 outline-none transition-all"
                       disabled={isLoading}
                     />
                   </div>
@@ -240,21 +232,21 @@ export default function RegisterPage() {
 
                 {/* Geographic State */}
                 <div>
-                  <label htmlFor="state" className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
-                    Location State (Schemes Routing)
+                  <label htmlFor="state" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    State (Subsidies & Schemes)
                   </label>
                   <div className="relative">
-                    <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-500" />
+                    <MapPin className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <select
                       id="state"
                       value={formData.state}
                       onChange={handleInputChange}
-                      className="w-full bg-neutral-900/60 border border-neutral-850 hover:border-neutral-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl py-3 pl-12 pr-4 text-sm text-white placeholder-neutral-500 outline-none appearance-none transition-all duration-300"
+                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-900 outline-none appearance-none transition-all"
                       disabled={isLoading}
                     >
-                      <option value="" className="bg-neutral-900 text-neutral-500">Select State</option>
+                      <option value="">Select State</option>
                       {states.map((s) => (
-                        <option key={s} value={s} className="bg-neutral-900 text-white">
+                        <option key={s} value={s}>
                           {s}
                         </option>
                       ))}
@@ -266,8 +258,8 @@ export default function RegisterPage() {
 
               {/* Validation errors */}
               {(validationError || error) && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-sm flex items-start gap-3 animate-fade-in">
-                  <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3 rounded-xl text-xs flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5 text-rose-600" />
                   <span>{validationError || error}</span>
                 </div>
               )}
@@ -275,15 +267,15 @@ export default function RegisterPage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full bg-primary hover:bg-primary-600 text-neutral-950 font-bold py-3.5 rounded-xl text-sm transition-all duration-300 shadow-[0_0_20px_rgba(0,200,117,0.15)] flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl text-xs transition-all shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <span className="h-5 w-5 border-2 border-neutral-950 border-t-transparent rounded-full animate-spin"></span>
+                  <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                 ) : (
                   <>
-                    Initialize Profile
-                    <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                    Create Profile
+                    <ArrowRight className="h-4 w-4" />
                   </>
                 )}
               </button>
@@ -291,12 +283,11 @@ export default function RegisterPage() {
           )}
         </div>
 
-        {/* Existing account suggestion */}
         {!isSuccess && (
-          <p className="text-center text-sm text-neutral-500 mt-6">
-            Already have an active console?{" "}
-            <Link href="/login" className="text-primary hover:text-white font-medium transition-colors">
-              Access Terminal
+          <p className="text-center text-xs text-slate-500 mt-5">
+            Already have an account?{" "}
+            <Link href="/login" className="text-emerald-700 font-semibold hover:underline">
+              Sign In
             </Link>
           </p>
         )}
