@@ -200,7 +200,7 @@ def backward_hook_fn(module, grad_in, grad_out):
 WEIGHTS_PATH = Path(__file__).parent / "leaf_disease_efficientnet.pth"
 model_instance = None
 leaf_transforms = None
-device = torch.device("cpu")
+device = torch.device("cpu") if TORCH_AVAILABLE else None
 CUSTOM_WEIGHTS_LOADED = False
 
 if TORCH_AVAILABLE:

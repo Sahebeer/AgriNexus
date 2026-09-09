@@ -32,6 +32,11 @@ postgres-data/
 *.db
 *.sqlite3
 
+# ML Checkpoints
+ml/**/checkpoints/*.pt
+ml/**/checkpoints/*.pth
+ml/datasets/raw/
+
 # Environment Variables & Secrets
 .env
 .env.local
@@ -46,3 +51,7 @@ postgres-data/
 # OS Specific
 .DS_Store
 Thumbs.db
+
+# October (generated — context bus / browser MCP)
+.codex/config.toml
+.codex/hooks.json

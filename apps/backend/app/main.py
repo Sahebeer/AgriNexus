@@ -1,3 +1,11 @@
+import sys
+from pathlib import Path
+
+# Ensure project root is in sys.path for ml package access
+root_dir = Path(__file__).resolve().parents[3]
+if str(root_dir) not in sys.path:
+    sys.path.insert(0, str(root_dir))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -14,7 +22,9 @@ from app.api.activity import router as activity_router
 from app.api.expenses import router as expenses_router
 from app.api.mandi import router as mandi_router
 from app.api.farms import router as farms_router
+from app.api.satellite import router as satellite_router
 from app.db.database import engine, Base
+from app.models.user import User # For schema bootstrapping
 from app.models.chat import ChatMessage, ChatMessageFeedback # For schema bootstrapping
 from app.models.scan import ScanLog # For schema bootstrapping
 from app.models.shopping import ShoppingList, ShoppingListItem # For schema bootstrapping
@@ -59,6 +69,7 @@ app.include_router(activity_router, prefix=f"{settings.API_V1_STR}/activity", ta
 app.include_router(expenses_router, prefix=f"{settings.API_V1_STR}/expenses", tags=["expenses"])
 app.include_router(mandi_router, prefix=f"{settings.API_V1_STR}/mandi", tags=["mandi"])
 app.include_router(farms_router, prefix=f"{settings.API_V1_STR}/farms", tags=["farms"])
+app.include_router(satellite_router, prefix=f"{settings.API_V1_STR}/satellite", tags=["satellite"])
 
 @app.get("/")
 def root_redirect():

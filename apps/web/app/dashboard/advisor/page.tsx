@@ -86,10 +86,12 @@ export default function AdvisorChatPage() {
 
   // Suggested prompt pills
   const promptPills = [
+    { text: "SAR Radar Telemetry", query: "How to make use of the Sentinel-1 SAR intelligence?" },
+    { text: "Why are leaves yellow?", query: "Why are my crop leaves turning yellow?" },
     { text: "Correct acid soil pH", query: "How do I correct acid soil pH?" },
     { text: "Best tomato fertilizers", query: "What fertilizer is best for tomatoes?" },
     { text: "Control late blight", query: "How can I control late blight?" },
-    { text: "Crops for clay soil", query: "Suggest crops suitable for heavy clay soil." }
+    { text: "Drip irrigation benefits", query: "How does drip irrigation save water and prevent disease?" }
   ];
 
   // Load chat threads list

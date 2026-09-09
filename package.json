@@ -7,9 +7,15 @@
     "apps/web"
   ],
   "scripts": {
+    "dev": "node start-services.js",
+    "dev:all": "node start-services.js",
     "web:dev": "npm run dev --workspace=apps/web",
     "web:build": "npm run build --workspace=apps/web",
     "web:start": "npm start --workspace=apps/web",
-    "web:lint": "npm run lint --workspace=apps/web"
+    "web:lint": "npm run lint --workspace=apps/web",
+    "backend:dev": "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --app-dir apps/backend",
+    "backend:start": "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir apps/backend",
+    "backend:test": "python -m pytest apps/backend",
+    "test": "npm run backend:test && npm run web:lint && npm run web:build"
   }
 }

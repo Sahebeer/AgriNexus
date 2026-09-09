@@ -20,7 +20,8 @@ import {
   AlertTriangle,
   ShoppingCart,
   CalendarDays,
-  Store
+  Store,
+  Satellite
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -104,6 +105,15 @@ export default function DashboardPage() {
       color: "text-blue-400 bg-blue-500/10 border-blue-500/20",
       actionText: "View Forecast",
       path: "/dashboard/weather"
+    },
+    {
+      title: "Satellite SAR Intelligence",
+      desc: "Monitor field-scale crop dynamics, dielectric moisture shifts, and canopy anomalies via Sentinel-1 radar passes.",
+      icon: Satellite,
+      tag: "C-Band Radar",
+      color: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+      actionText: "View SAR Telemetry",
+      path: "/dashboard/satellite"
     },
     {
       title: "Mandi Marketplace",

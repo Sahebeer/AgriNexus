@@ -13,6 +13,12 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql://agrinexus_user:agrinexus_password@localhost:5432/agrinexus_db"
     
+    # ML Vision & SAR Thresholds
+    CROP_GATE_THRESHOLD: float = 0.85
+    CROP_CLASSIFIER_THRESHOLD: float = 0.80
+    DISEASE_CLASSIFIER_THRESHOLD: float = 0.80
+    SENTINEL1_STAC_URL: str = "https://earth-search.aws.element84.com/v1"
+    
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",

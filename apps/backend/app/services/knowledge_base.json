@@ -39,17 +39,71 @@
     "diseases": "Early Blight, Late Blight, Black scurf, Common scab.",
     "irrigation_habits": "Requires frequent shallow irrigations. Maintain uniform soil moisture to prevent tuber cracking and deformities."
   },
+  "mustard": {
+    "sowing_period": "Mid-September to late October (Rabi)",
+    "ideal_temp_c": "15-25°C",
+    "soil_suitability": "Light to medium loam soils with good drainage; tolerates slight salinity.",
+    "fertilizer_recommendation": "Apply 60-80 kg N, 30-40 kg P2O5, 20 kg K2O per hectare. Critical addition: Elemental sulfur (20-30 kg/ha) increases oil content by 15-20%.",
+    "diseases": "White rust (Albugo candida), Alternaria blight, Downy mildew. Pests: Mustard aphid (Lipaphis erysimi).",
+    "irrigation_habits": "Requires 2 critical irrigations: first at flowering stage (30-35 days) and second at pod formation (60-65 days). Avoid excessive moisture."
+  },
+  "sugarcane": {
+    "sowing_period": "Spring (Feb-March) or Autumn (Oct-Nov)",
+    "ideal_temp_c": "25-35°C with high humidity",
+    "soil_suitability": "Deep, well-drained loam or clay-loam soils with high organic matter (pH 6.5-7.5).",
+    "fertilizer_recommendation": "Heavy feeder: 150-250 kg N, 60-80 kg P2O5, and 60-90 kg K2O per hectare applied in split doses during tillering.",
+    "diseases": "Red rot (Colletotrichum falcatum), Smut, Grassy shoot disease.",
+    "irrigation_habits": "High water requirement (1500-2500 mm). Alternate furrow irrigation or drip irrigation with trash mulching saves 40-50% water."
+  },
   "blight": {
-    "pathogen_type": "Fungi / Oomycetes",
+    "pathogen_type": "Fungi / Oomycetes (Alternaria solani, Phytophthora infestans)",
     "environmental_triggers": "Cool, damp weather with high humidity (>90%) and frequent leaf wetness.",
-    "chemical_control": "Spray Mancozeb (2g/L) or Copper Oxychloride (3g/L) as a protective measure. Use Metalaxyl or Azoxystrobin for active infections.",
-    "organic_control": "Apply Trichoderma viride formulations or spray diluted neem oil (0.5%). Remove and burn infected foliage immediately."
+    "chemical_control": "Spray Mancozeb (2g/L) or Copper Oxychloride (3g/L) as a protective measure. Use Metalaxyl (Ridomil MZ at 2g/L) or Azoxystrobin (1ml/L) for active infections.",
+    "organic_control": "Apply Trichoderma viride formulations or spray diluted neem oil (0.5%). Remove and destroy infected foliage immediately to halt spore dissemination."
   },
   "rust": {
-    "pathogen_type": "Fungi (Puccinia spp.)",
-    "environmental_triggers": "Cool temperatures (15-22°C) combined with dew or relative humidity.",
-    "chemical_control": "Spray Propiconazole (Tilt 25 EC) at 1ml/L or Tebuconazole when pustules first appear.",
-    "organic_control": "Grow rust-resistant cultivars. Apply sulfur dust or copper sulfate sprays early in the morning."
+    "pathogen_type": "Fungi (Puccinia spp. - Yellow/Stripe, Brown/Leaf, Black/Stem)",
+    "environmental_triggers": "Cool temperatures (10-22°C) combined with morning dew, high humidity, or fog.",
+    "chemical_control": "Spray Propiconazole (Tilt 25 EC at 1ml/L) or Tebuconazole (Folicur at 1ml/L) immediately when pustules first appear.",
+    "organic_control": "Grow rust-resistant cultivars (e.g. HD-2967, DBW-187). Apply sulfur dust (25 kg/ha) or copper sulfate sprays early in the morning."
+  },
+  "yellow_leaves": {
+    "etiology": "Chlorosis can arise from multiple factors: Nitrogen deficiency, Iron deficiency, overwatering/waterlogging, or viral infection.",
+    "nitrogen_deficiency": "Older/lower leaves turn yellow first, starting from the tip and moving along the midrib (V-shaped yellowing). Solution: Top-dress with Urea or spray 1-2% Urea solution.",
+    "iron_deficiency": "Younger/top leaves show interveinal chlorosis (veins stay green while leaf turns yellow/white). Common in alkaline or calcareous soils. Solution: Foliar spray of Ferrous Sulfate (0.5%) with citric acid.",
+    "overwatering_root_rot": "General limp yellowing across entire plant accompanied by stunted growth. Solution: Improve drainage, reduce irrigation intervals, and drench roots with Trichoderma or Carbendazim (1g/L)."
+  },
+  "pest_control": {
+    "sucking_pests": "Aphids, Whiteflies, Thrips, Jassids. Spray Neem oil (10,000 ppm at 2-3 ml/L) or Imidacloprid 17.8 SL (0.5 ml/L) or Acetamiprid 20 SP (0.2 g/L).",
+    "chewing_borers": "Stem borers, Fruit borers, Fall armyworm. Install yellow sticky traps and pheromone traps (5/acre). Spray Bacillus thuringiensis (Bt @ 2g/L) or Chlorantraniliprole 18.5 SC (Coragen @ 0.4 ml/L).",
+    "ipm_practices": "Practice crop rotation, maintain field sanitation, encourage natural predators (ladybird beetles, chrysoperla), and avoid prophylactic broad-spectrum insecticide sprays."
+  },
+  "drip_irrigation": {
+    "water_efficiency": "Saves 40% to 60% water compared to conventional flood irrigation; increases crop yield by 20% to 35%.",
+    "fertigation_advantage": "Allows direct liquid nutrient delivery to the crop root zone (fertigation), reducing fertilizer losses through leaching and volatilization by 30-40%.",
+    "disease_reduction": "Keeps plant canopy and foliage completely dry, drastically lowering foliar fungal spore germination (e.g. Blight, Downy Mildew, Rust)."
+  },
+  "organic_farming": {
+    "jeevamrit_formulation": "Mix 10 kg fresh cow dung, 10 L cow urine, 2 kg jaggery, 2 kg gram flour (besan), and a handful of fertile soil in 200 L water. Ferment for 48 hours. Apply 200 L/acre via irrigation.",
+    "soil_enrichment": "Apply well-decomposed vermicompost (5-8 t/ha) or farmyard manure (FYM). Sow green manure crops like Sunnhemp or Dhaincha and incorporate into soil before flowering.",
+    "pest_repellents": "Prepare Dashparni ark or Neem-garlic extract for broad-spectrum organic insect deterrence."
+  },
+  "frost_protection": {
+    "immediate_measures": "Give a light irrigation to the field in the evening before an expected frosty night. Wet soil conducts and retains heat significantly better than dry soil, raising canopy micro-temperature by 1.5-2.5°C.",
+    "smudge_smoke": "Burn crop residue or damp straw along field borders on the upwind side to form an insulating smoke blanket that prevents radiant heat loss.",
+    "foliar_protection": "Spray dilute soluble sulfur (0.1%) or Glucose/Potassium nitrate solution (0.2%) to bolster cell sap concentration against ice crystal nucleation."
+  },
+  "soil_testing": {
+    "sampling_protocol": "Collect V-shaped sub-samples (0-15 cm depth for field crops, 0-30 cm for horticulture) from 8-10 random spots per hectare in a zig-zag pattern. Mix thoroughly, air dry in shade, and prepare 500g composite sample.",
+    "key_parameters": "pH (acidity/alkalinity), Electrical Conductivity (salinity), Organic Carbon (fertility indicator), Available N, P, K, and micronutrients (Zinc, Iron, Boron, Sulfur)."
+  },
+  "sar_radar": {
+    "concept": "Sentinel-1 Synthetic Aperture Radar (SAR) is an active spaceborne microwave sensor operating at C-band (5.405 GHz, ~5.5 cm wavelength).",
+    "all_weather_capability": "Microwaves penetrate clouds, dense fog, haze, smoke, and operate 24/7 day and night, providing reliable continuous Earth observation when optical satellites (Sentinel-2) are blinded by monsoon overcast.",
+    "soil_moisture_vv": "Co-polarization backscatter (VV in dB) is highly sensitive to the surface dielectric constant, directly tracking soil moisture saturation, flood inundation, and root-zone water deficits.",
+    "canopy_biomass_vh": "Cross-polarization backscatter (VH in dB) measures volume scattering from crop stems and leaves, tracking crop biomass accumulation, vegetative canopy expansion, and lodging damage.",
+    "radar_vegetation_index": "Radar Vegetation Index (RVI = 4*VH/(VV+VH)) tracks plant structural density from bare soil (0.0) to peak vegetative maturity (~1.0).",
+    "field_application": "Use SAR to automate cloud-proof irrigation schedules, detect post-storm crop lodging, delineate flooded acreage, and calculate satellite-verified field water stress without manual sensors."
   },
   "fertilizer": {
     "urea": "46% Nitrogen. Promotes rapid vegetative growth. High leaf chlorophyll density.",

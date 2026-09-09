@@ -1,0 +1,47 @@
+satellite:
+  name: "Sentinel-1"
+  constellation: "Copernicus"
+  instrument: "C-SAR"
+  frequency_ghz: 5.405
+  polarizations: ["VV", "VH"]
+  orbit_passes: ["ASCENDING", "DESCENDING"]
+  spatial_resolution_m: 10
+
+preprocessing:
+  calibration: "sigma0_db"
+  noise_floor_db: -28.0
+  speckle_filter: "lee_filter"
+  clipping: "geojson_field_boundary"
+
+features:
+  metrics:
+    - "vv_mean_db"
+    - "vh_mean_db"
+    - "vv_vh_ratio"
+    - "cross_ratio_vh_vv"
+    - "vv_std"
+    - "vh_std"
+    - "radar_vegetation_index"  # RVI = (4 * VH) / (VV + VH) in linear scale
+  temporal:
+    - "delta_vv"
+    - "delta_vh"
+    - "delta_ratio"
+    - "rolling_mean_30d"
+    - "anomaly_z_score"
+
+model:
+  type: "random_forest"
+  n_estimators: 100
+  max_depth: 8
+  random_state: 42
+  conditions:
+    - "normal"
+    - "vegetation_stress"
+    - "excess_moisture"
+    - "moisture_deficit"
+    - "biomass_growth"
+
+thresholds:
+  confidence_min: 0.70
+  moisture_anomaly_z: 1.8
+  stress_anomaly_z: -1.5

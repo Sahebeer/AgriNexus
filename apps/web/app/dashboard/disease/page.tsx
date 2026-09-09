@@ -23,23 +23,31 @@ import {
 } from "lucide-react";
 
 interface DiagnosisResult {
-  disease_id: string;
-  name: string;
-  type: string;
-  severity: string;
-  description: string;
-  treatment: string;
-  prevention: string;
-  confidence: number;
+  disease_id?: string;
+  name?: string;
+  crop?: string | null;
+  crop_confidence?: number | null;
+  disease?: string | null;
+  disease_name?: string | null;
+  disease_confidence?: number | null;
+  type?: string;
+  severity?: string;
+  description?: string;
+  treatment?: string;
+  prevention?: string;
+  confidence?: number;
+  message?: string;
+  error_code?: string;
   scan_log_id?: number;
   gradcam_overlay?: string | null;
   status?: string;
+  supported?: boolean;
   iqa_reasons?: string[];
   iqa_metrics?: {
-    blur_variance: number;
-    brightness_mean: number;
-    contrast_std: number;
-    leaf_coverage_pct: number;
+    blur_variance?: number;
+    brightness_mean?: number;
+    contrast_std?: number;
+    leaf_coverage_pct?: number;
   };
   top3_predictions?: Array<{ name: string; confidence: number }>;
 }
@@ -145,22 +153,25 @@ export default function DiseaseDetectionPage() {
     setError(null);
 
     const formData = new FormData();
+    formData.append("image", file);
     formData.append("file", file);
 
     try {
-      const res = await api.post("/api/v1/disease/detect", formData, {
+      const res = await api.post("/api/v1/disease/analyze", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
-      // Simulate scan delay for smooth micro-animations
       setTimeout(() => {
         setResult(res.data);
         setIsAnalyzing(false);
-        showToast("Diagnosis completed successfully!", "success");
-      }, 2000);
+        showToast("Analysis completed successfully!", "success");
+      }, 1000);
     } catch (err: any) {
-      const errMsg = err.response?.data?.detail || "Inference failed. Check network or server connection.";
+      const errMsg =
+        err.response?.data?.detail?.message ||
+        err.response?.data?.detail ||
+        "Inference failed. Check network or server connection.";
       setError(errMsg);
       setIsAnalyzing(false);
       showToast(errMsg, "error");
@@ -345,7 +356,108 @@ export default function DiseaseDetectionPage() {
           {/* Results column */}
           <div className="lg:col-span-7">
             {result ? (
-              result.status === "IQA_Failed" ? (
+              result.status === "crop_not_detected" ? (
+                /* Crop Not Detected (Rejection) Card */
+                <div className="glass border border-red-500/20 rounded-3xl p-6 md:p-8 animate-fade-in space-y-6">
+                  <div className="flex items-center gap-3 border-b border-neutral-800/80 pb-4">
+                    <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-2xl text-red-400">
+                      <ShieldAlert className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-0.5">Crop Relevance Gate</div>
+                      <span className="text-xs font-bold text-red-400 bg-red-500/10 px-2.5 py-0.5 rounded border border-red-500/20">
+                        ✕ Crop Not Detected
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="p-5 rounded-2xl bg-neutral-900/60 border border-neutral-850 space-y-2">
+                      <div className="text-xs font-bold text-red-400 uppercase tracking-wider text-left">Detection Result</div>
+                      <p className="text-sm text-neutral-200 leading-relaxed text-left">
+                        {result.message || "No supported agricultural crop foliage was detected in the photograph."}
+                      </p>
+                    </div>
+
+                    <div className="p-5 rounded-2xl bg-neutral-950 border border-neutral-900 space-y-3 text-left">
+                      <div className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Accepted Subject Imagery</div>
+                      <p className="text-xs text-neutral-400 leading-relaxed">
+                        To protect diagnostic safety, our neural gating network automatically rejects non-crop subjects such as vehicles, people, indoor items, electronics, and random background scenery.
+                      </p>
+                      <div className="text-xs text-primary font-medium flex items-center gap-1.5 pt-1">
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        Please upload a clear, focused photograph of a supported crop leaf (Tomato, Potato, Bell Pepper, Wheat, Corn).
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-neutral-800/80 pt-6">
+                    <button 
+                      onClick={resetScanner}
+                      className="w-full bg-neutral-900 hover:bg-neutral-850 border border-neutral-850 hover:border-neutral-700 text-neutral-200 font-semibold py-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      Upload Crop Photograph
+                    </button>
+                  </div>
+                </div>
+              ) : result.status === "healthy" ? (
+                /* Healthy Foliage Card */
+                <div className="glass border border-primary/20 rounded-3xl p-6 md:p-8 animate-fade-in space-y-6">
+                  <div className="flex items-center justify-between border-b border-neutral-800/80 pb-4">
+                    <div>
+                      <div className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1">Diagnosis Result</div>
+                      <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded border border-primary/20">
+                        🌿 {result.crop ? result.crop.replace('_', ' ').toUpperCase() : "CROP"}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-md border border-primary/20">
+                        ✓ Healthy Foliage
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-2xl font-bold text-white mb-2 text-left">{result.disease_name || result.name || "Healthy Plant"}</h3>
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 bg-neutral-900 border border-neutral-850 h-3 rounded-full overflow-hidden">
+                        <div 
+                          className="bg-primary h-full rounded-full transition-all duration-1000"
+                          style={{ width: `${(result.disease_confidence || result.confidence || 0.95) * 100}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-sm font-bold text-primary">
+                        {Math.round((result.disease_confidence || result.confidence || 0.95) * 100)}% Confidence
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-5 rounded-2xl bg-neutral-900/60 border border-neutral-850 space-y-2 text-left">
+                    <div className="text-xs font-bold text-primary uppercase tracking-wider">Agronomic Assessment</div>
+                    <p className="text-xs md:text-sm text-neutral-300 leading-relaxed">
+                      {result.description || "The crop foliage shows healthy, uniform pigmentation with no detected necrotic or fungal lesions."}
+                    </p>
+                  </div>
+
+                  <div className="p-5 rounded-2xl bg-neutral-900/60 border border-neutral-850 space-y-2 text-left">
+                    <div className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Preventive Maintenance</div>
+                    <p className="text-xs md:text-sm text-neutral-300 leading-relaxed">
+                      {result.prevention || "Maintain scheduled irrigation and weekly visual monitoring."}
+                    </p>
+                  </div>
+
+                  <div className="border-t border-neutral-800/80 pt-6 flex gap-4">
+                    <button 
+                      onClick={resetScanner}
+                      className="w-full bg-neutral-900 hover:bg-neutral-850 border border-neutral-850 hover:border-neutral-700 text-neutral-200 font-semibold py-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      Scan Another Leaf
+                    </button>
+                  </div>
+                </div>
+              ) : result.status === "IQA_Failed" || result.status === "image_quality_error" ? (
                 /* IQA Validation Failure Card */
                 <div className="glass border border-red-500/20 rounded-3xl p-6 md:p-8 animate-fade-in space-y-6">
                   <div className="flex items-center gap-3 border-b border-neutral-800/80 pb-4">
@@ -355,7 +467,7 @@ export default function DiseaseDetectionPage() {
                     <div>
                       <div className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-0.5">Image Quality Assessment</div>
                       <span className="text-xs font-bold text-red-400 bg-red-500/10 px-2.5 py-0.5 rounded border border-red-500/20">
-                        {result.name}
+                        {result.name || "Quality Check Failed"}
                       </span>
                     </div>
                   </div>
@@ -363,41 +475,17 @@ export default function DiseaseDetectionPage() {
                   <div className="space-y-4">
                     <div className="p-5 rounded-2xl bg-neutral-900/60 border border-neutral-850 space-y-3">
                       <div className="text-xs font-bold text-red-400 uppercase tracking-wider text-left">Quality Issues Checked</div>
-                      <ul className="space-y-2">
-                        {result.iqa_reasons?.map((reason, idx) => (
-                          <li key={idx} className="text-xs text-neutral-300 flex items-start gap-2 text-left">
-                            <span className="h-1.5 w-1.5 rounded-full bg-red-400 mt-1.5 flex-shrink-0"></span>
-                            <span>{reason}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-900 flex flex-col justify-between">
-                        <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider block mb-1 text-left">Blur Variance</span>
-                        <span className={`text-sm font-bold text-left ${result.iqa_metrics?.blur_variance! >= 80 ? "text-primary" : "text-red-400"}`}>
-                          {result.iqa_metrics?.blur_variance} <span className="text-[9px] text-neutral-600">/ 80.0 limit</span>
-                        </span>
-                      </div>
-                      <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-900 flex flex-col justify-between">
-                        <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider block mb-1 text-left">Mean Brightness</span>
-                        <span className={`text-sm font-bold text-left ${result.iqa_metrics?.brightness_mean! >= 45 && result.iqa_metrics?.brightness_mean! <= 225 ? "text-primary" : "text-red-400"}`}>
-                          {result.iqa_metrics?.brightness_mean} <span className="text-[9px] text-neutral-600">/ 45-225 range</span>
-                        </span>
-                      </div>
-                      <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-900 flex flex-col justify-between">
-                        <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider block mb-1 text-left">Contrast Deviation</span>
-                        <span className={`text-sm font-bold text-left ${result.iqa_metrics?.contrast_std! >= 15 ? "text-primary" : "text-red-400"}`}>
-                          {result.iqa_metrics?.contrast_std} <span className="text-[9px] text-neutral-600">/ 15.0 limit</span>
-                        </span>
-                      </div>
-                      <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-900 flex flex-col justify-between">
-                        <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider block mb-1 text-left">Leaf Coverage</span>
-                        <span className={`text-sm font-bold text-left ${result.iqa_metrics?.leaf_coverage_pct! >= 12 ? "text-primary" : "text-red-400"}`}>
-                          {result.iqa_metrics?.leaf_coverage_pct}% <span className="text-[9px] text-neutral-600">/ 12% limit</span>
-                        </span>
-                      </div>
+                      <p className="text-xs text-neutral-300 text-left mb-2">{result.message}</p>
+                      {result.iqa_reasons && (
+                        <ul className="space-y-2">
+                          {result.iqa_reasons?.map((reason, idx) => (
+                            <li key={idx} className="text-xs text-neutral-300 flex items-start gap-2 text-left">
+                              <span className="h-1.5 w-1.5 rounded-full bg-red-400 mt-1.5 flex-shrink-0"></span>
+                              <span>{reason}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   </div>
 
@@ -411,7 +499,7 @@ export default function DiseaseDetectionPage() {
                     </button>
                   </div>
                 </div>
-              ) : result.status === "Uncertain" || result.status === "Inconclusive" ? (
+              ) : result.status === "Uncertain" || result.status === "Inconclusive" || result.status === "uncertain" || result.status === "unknown" ? (
                 /* Low-confidence or Uncertain display card with Top 3 disease list */
                 <div className="glass border border-amber-500/20 rounded-3xl p-6 md:p-8 animate-fade-in space-y-6">
                   <div className="flex items-gap-3 border-b border-neutral-800/80 pb-4">
@@ -528,16 +616,16 @@ export default function DiseaseDetectionPage() {
 
                   {/* Pathogen heading and confidence */}
                   <div>
-                    <h3 className="text-2xl font-bold text-white mb-2 text-left">{result.name}</h3>
+                    <h3 className="text-2xl font-bold text-white mb-2 text-left">{result.disease_name || result.name}</h3>
                     <div className="flex items-center gap-4">
                       <div className="flex-1 bg-neutral-900 border border-neutral-850 h-3 rounded-full overflow-hidden">
                         <div 
                           className="bg-primary h-full rounded-full transition-all duration-1000"
-                          style={{ width: `${result.confidence * 100}%` }}
+                          style={{ width: `${(result.disease_confidence || result.confidence || 0) * 100}%` }}
                         ></div>
                       </div>
                       <span className="text-sm font-bold text-primary">
-                        {roundPercent(result.confidence)}% Confidence
+                        {Math.round((result.disease_confidence || result.confidence || 0) * 100)}% Confidence
                       </span>
                     </div>
                   </div>
