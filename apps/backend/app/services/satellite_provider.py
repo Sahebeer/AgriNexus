@@ -329,9 +329,20 @@ class RealSentinel2Provider(SatelliteProvider):
         provenance.update({"ndvi_mean": "sentinel-2", "growth_history": "sentinel-2",
                            "health_score": "derived from sentinel-2 NDVI"})
         base["data_provenance"] = provenance
-        base["ai_reasoning"] = generate_ai_farm_reasoning(
+        reasoning = generate_ai_farm_reasoning(
             crop=base["crop"], area_hectares=base["area_hectares"], ndvi_current=ndvi_now,
             moisture_score=base["moisture_index"], zones=base["zones"], barren_parcels=base["barren_land"])
+        # Zone, moisture and barren-land figures are still synthetic: tag every sentence built from them.
+        demo_words = ("sector", "zone", "moisture", "underutilized", "barren", "parcel")
+        for key in ("observed", "inferred", "recommended"):
+            reasoning[key] = [f"[demo layer] {b}" if any(w in b.lower() for w in demo_words) else b
+                              for b in reasoning.get(key, [])]
+        # Keep only the first (NDVI-based) sentence; the rest is derived from demo zones.
+        first = reasoning["summary"].split(f"{ndvi_now:.2f}. ")[0] + f"{ndvi_now:.2f}"
+        reasoning["summary"] = first + (
+            f". Field-mean NDVI is measured by Sentinel-2 ({latest['date']}); zone, moisture and "
+            f"barren-land layers are still demo data.")
+        base["ai_reasoning"] = reasoning
         return base
 
     def get_farm_analysis(self, boundary_coordinates: List[List[float]], crop: str = "Wheat",
@@ -345,7 +356,9 @@ class RealSentinel2Provider(SatelliteProvider):
     def get_demo_farm(self) -> Dict[str, Any]:
         base = self._demo.get_demo_farm()
         base["area_note"] = "Earlier builds hard-coded 12.4 ha; the boundary actually measures ~50 ha."
-        return self._apply_real(base, DemoSatelliteProvider.DEMO_FARM_COORDINATES)
+        res = self._apply_real(base, DemoSatelliteProvider.DEMO_FARM_COORDINATES)
+        res["data_provenance"]["crop"] = "demo (crop type and match % are not classified from imagery)"
+        return res
 
 
 def get_default_satellite_provider() -> SatelliteProvider:

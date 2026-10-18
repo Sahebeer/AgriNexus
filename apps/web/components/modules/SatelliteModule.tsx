@@ -135,7 +135,7 @@ export default function SatelliteModule({ onBack }: SatelliteModuleProps) {
       setCustomPolygon(null);
       setDrawnVertices([]);
       setIsDrawing(false);
-      showToast("Flagship Indian Demonstration Farm Loaded (12.4 ha)", "success");
+      showToast(`Demo farm loaded (${res.data.area_hectares} ha, ${res.data.is_demo ? "demo NDVI" : "Sentinel-2 NDVI"})`, "success");
     } catch {
       showToast("Loaded local agricultural fallback telemetry.", "info");
     } finally {

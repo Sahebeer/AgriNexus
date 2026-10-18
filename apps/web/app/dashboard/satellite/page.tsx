@@ -146,7 +146,7 @@ export default function SatellitePage() {
       setCustomPolygon(null);
       setDrawnVertices([]);
       setIsDrawing(false);
-      showToast("Flagship Indian Demonstration Farm Loaded (12.4 ha)", "success");
+      showToast(`Demo farm loaded (${res.data.area_hectares} ha, ${res.data.is_demo ? "demo NDVI" : "Sentinel-2 NDVI"})`, "success");
     } catch (err) {
       console.error("Failed to load demo farm:", err);
       showToast("Notice: Loaded local agricultural fallback telemetry.", "info");
@@ -312,7 +312,7 @@ export default function SatellitePage() {
                 AgriNexus Smart Farm Maps & Earth Intelligence
               </h1>
               <p className="text-xs text-slate-500 font-medium">
-                Multi-Spectral Sentinel-2 Simulation • Dynamic Farm Boundary Drawing • AI Agronomy
+                Sentinel-2 L2A NDVI (Element84) • Field Boundary Drawing • Rule-based Agronomy
               </p>
             </div>
           </div>

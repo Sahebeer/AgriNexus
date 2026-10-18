@@ -7,6 +7,17 @@ Observed, Inferred, and Recommended categories to maintain data honesty.
 from typing import Dict, Any, List, Optional
 
 
+def _ndvi_phrase(ndvi: float) -> str:
+    """Plain-language NDVI band (same cut-offs as the panel's health status)."""
+    if ndvi >= 0.65:
+        return "dense, healthy canopy"
+    if ndvi >= 0.5:
+        return "moderate canopy cover"
+    if ndvi >= 0.3:
+        return "sparse or developing vegetation"
+    return "very low vegetation cover (bare soil, fallow, early growth or stress)"
+
+
 def generate_ai_farm_reasoning(
     crop: str,
     area_hectares: float,
@@ -27,7 +38,7 @@ def generate_ai_farm_reasoning(
 
     # 1. OBSERVED (Direct measurements)
     observed_bullets = [
-        f"Mean canopy NDVI across {area_hectares} hectares is {ndvi_current:.2f}, indicating healthy chlorophyll density overall.",
+        f"Mean canopy NDVI across {area_hectares} hectares is {ndvi_current:.2f}, indicating {_ndvi_phrase(ndvi_current)}.",
         f"Root-zone dielectric moisture index is currently {moisture_score:.0f}%.",
         f"Spatial distribution across {len(zones)} zones shows {len(healthy_zones)} optimal sector(s), {len(moderate_zones)} moderate sector(s), and {len(stressed_zones)} stressed sector(s).",
     ]
@@ -80,7 +91,7 @@ def generate_ai_farm_reasoning(
     )
 
     summary_narrative = (
-        f"Your {crop} field is demonstrating robust vegetative development across {area_hectares} hectares with an overall NDVI of {ndvi_current:.2f}. "
+        f"Your {crop} field shows {_ndvi_phrase(ndvi_current)} across {area_hectares} hectares with an overall NDVI of {ndvi_current:.2f}. "
         + (f"However, the {stressed_names} exhibits noticeable moisture deficit and canopy thinning. " if stressed_zones else "Vegetation density is consistent across all sectors. ")
         + "Follow the targeted recommendations below to maximize water use efficiency and protect harvest potential."
     )

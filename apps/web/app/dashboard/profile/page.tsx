@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import api from "../../../lib/api";
+import FieldRealDataPanel from "../../../components/farm/FieldRealDataPanel";
 import { useAuthStore } from "../../../store/authStore";
 import { useToastStore } from "../../../store/toastStore";
 import {
@@ -65,6 +66,7 @@ interface FarmField {
   current_crop: string;
   sowing_date: string;
   irrigation_method: string;
+  boundary_geojson?: string | null;
   soil_reports: SoilReport[];
 }
 
@@ -538,6 +540,12 @@ export default function ProfilePage() {
                       </button>
                     </div>
                   </div>
+
+                  <FieldRealDataPanel
+                    farmId={activeFarm.id}
+                    hasBoundary={!!activeFarm.boundary_geojson}
+                    onBoundarySaved={fetchFarms}
+                  />
 
                   {/* Sub tabs: Details, Soil metrics gauges, Soil History chart, Earth Intelligence */}
                   <div className="flex border-b border-slate-200 max-w-md">

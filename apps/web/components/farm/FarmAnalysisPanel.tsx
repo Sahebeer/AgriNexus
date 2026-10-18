@@ -211,7 +211,10 @@ export default function FarmAnalysisPanel({
               NDVI Index
             </div>
             <div className="text-lg font-bold text-primary">{data.ndvi_mean}</div>
-            <div className="text-[9px] text-emerald-400 font-medium">High Canopy</div>
+            <div className="text-[9px] text-emerald-400 font-medium">
+              {data.ndvi_mean >= 0.65 ? "Dense Canopy" : data.ndvi_mean >= 0.5 ? "Moderate Canopy" : data.ndvi_mean >= 0.3 ? "Sparse Canopy" : "Low Cover"}
+              {data.is_demo ? " (demo)" : " (Sentinel-2)"}
+            </div>
           </div>
 
           <div className="p-3 rounded-2xl bg-neutral-900/70 border border-neutral-800/60 text-left">
@@ -219,7 +222,9 @@ export default function FarmAnalysisPanel({
               Moisture
             </div>
             <div className="text-lg font-bold text-blue-400">{data.moisture_index}%</div>
-            <div className="text-[9px] text-neutral-400 font-medium">Adequate</div>
+            <div className="text-[9px] text-neutral-400 font-medium">
+              {(data as any).data_provenance?.moisture_index === "demo" || data.is_demo ? "Demo layer" : "Adequate"}
+            </div>
           </div>
 
           <div className="p-3 rounded-2xl bg-neutral-900/70 border border-neutral-800/60 text-left">
