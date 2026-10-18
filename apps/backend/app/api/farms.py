@@ -394,3 +394,24 @@ def get_farm_vegetation(
     series["area"] = area_summary(geom)
     series["centroid"] = list(centroid_latlon(geom))
     return series
+
+
+@router.get("/{farm_id}/soil-estimate")
+def get_farm_soil_estimate(
+    farm_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """SoilGrids ~250 m ESTIMATE at the field centroid, shown next to (never replacing) farmer soil data."""
+    from app.services.realdata.geometry import centroid_latlon
+    from app.services.realdata.soilgrids import get_soil_estimate
+    farm, geom = _owned_farm_geometry(db, farm_id, current_user)
+    lat, lon = centroid_latlon(geom)
+    estimate = get_soil_estimate(lat, lon, db=db)
+    latest = farm.soil_reports[0] if farm.soil_reports else None
+    return {
+        "farm_id": farm.id,
+        "estimate": estimate,
+        "farmer_entered": SoilReportOut.model_validate(latest).model_dump() if latest else None,
+        "precedence": "farmer_entered values are authoritative; estimate is context only",
+    }

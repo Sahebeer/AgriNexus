@@ -48,3 +48,14 @@ class WeatherIndexSnapshot(Base):
     sowing_key = Column(String, nullable=False, default="")
     payload = Column(String, nullable=False)          # JSON with values + provenance
     fetched_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class SoilEstimateCache(Base):
+    """Cached SoilGrids estimate per rounded point (static product, no expiry)."""
+    __tablename__ = "soil_estimate_cache"
+
+    id = Column(Integer, primary_key=True, index=True)
+    lat = Column(Float, nullable=False, index=True)
+    lon = Column(Float, nullable=False, index=True)
+    payload = Column(String, nullable=False)
+    fetched_at = Column(DateTime(timezone=True), server_default=func.now())
