@@ -17,3 +17,6 @@ numpy==1.26.4
 requests==2.31.0
 scikit-learn==1.6.1
 joblib==1.5.3
+rasterio==1.4.3
+shapely==2.0.6
+pyproj==3.6.1
