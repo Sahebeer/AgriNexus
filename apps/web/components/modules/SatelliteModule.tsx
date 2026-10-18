@@ -126,7 +126,7 @@ export default function SatelliteModule({ onBack }: SatelliteModuleProps) {
   const loadFlagshipDemoFarm = async () => {
     setIsMapLoading(true);
     try {
-      const res = await api.get("/api/v1/satellite-maps/demo-farm");
+      const res = await api.get("/api/v1/satellite-maps/demo-farm", { timeout: 150000 });
       setFarmData(res.data);
       if (res.data.center) {
         setMapCenter([res.data.center[0], res.data.center[1]]);
@@ -249,11 +249,11 @@ export default function SatelliteModule({ onBack }: SatelliteModuleProps) {
   const analyzeBoundary = async (coords: number[][]) => {
     setIsMapLoading(true);
     try {
-      const res = await api.post("/api/v1/satellite-maps/analyze-polygon", {
-        coordinates: coords,
-        name: "Custom Boundary Field",
+      const res = await api.post("/api/v1/satellite-maps/analyze-boundary", {
+        boundary: coords,
+        farm_name: "Custom Boundary Field",
         crop: "Custom Crop",
-      });
+      }, { timeout: 150000 });
       setFarmData(res.data);
       setSelectedZone(null);
       setSelectedBarrenParcel(null);

@@ -137,7 +137,7 @@ export default function SatellitePage() {
   const loadFlagshipDemoFarm = async () => {
     setIsMapLoading(true);
     try {
-      const res = await api.get("/api/v1/satellite-maps/demo-farm");
+      const res = await api.get("/api/v1/satellite-maps/demo-farm", { timeout: 150000 });
       setFarmData(res.data);
       if (res.data.center) {
         setMapCenter([res.data.center[0], res.data.center[1]]);
@@ -276,7 +276,7 @@ export default function SatellitePage() {
         boundary: geoJsonCoords,
         crop: "Wheat",
         farm_name: "Custom Precision Farm"
-      });
+      }, { timeout: 150000 });
       setFarmData(res.data);
       showToast(`Analyzed ${res.data.area_hectares} ha (${res.data.area_acres} acres) with AI Reasoning!`, "success");
     } catch (err: any) {

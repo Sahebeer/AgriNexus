@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+  <Document>
+    <name>Niphad test fields (Nashik, Maharashtra)</name>
+    <Placemark>
+      <name>Main block</name>
+      <Polygon>
+        <altitudeMode>clampToGround</altitudeMode>
+        <outerBoundaryIs><LinearRing><coordinates>
+          74.1085,20.0760,512 74.1145,20.0755,511 74.1162,20.0805,515
+          74.1118,20.0825,517 74.1072,20.0798,514 74.1085,20.0760,512
+        </coordinates></LinearRing></outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+    <Placemark>
+      <name>Split plot with well</name>
+      <MultiGeometry>
+        <Polygon>
+          <outerBoundaryIs><LinearRing><coordinates>
+            74.1180,20.0760 74.1200,20.0760 74.1200,20.0780 74.1180,20.0780 74.1180,20.0760
+          </coordinates></LinearRing></outerBoundaryIs>
+          <innerBoundaryIs><LinearRing><coordinates>
+            74.1189,20.0769 74.1191,20.0769 74.1191,20.0771 74.1189,20.0771 74.1189,20.0769
+          </coordinates></LinearRing></innerBoundaryIs>
+        </Polygon>
+        <Polygon>
+          <outerBoundaryIs><LinearRing><coordinates>
+            74.1210,20.0760 74.1225,20.0760 74.1225,20.0775 74.1210,20.0775 74.1210,20.0760
+          </coordinates></LinearRing></outerBoundaryIs>
+        </Polygon>
+      </MultiGeometry>
+    </Placemark>
+    <Placemark>
+      <name>Pump house</name>
+      <Point><coordinates>74.1110,20.0790,0</coordinates></Point>
+    </Placemark>
+  </Document>
+</kml>

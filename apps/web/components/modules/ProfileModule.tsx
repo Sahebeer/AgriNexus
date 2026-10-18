@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import api from "../../lib/api";
 import { useAuthStore } from "../../store/authStore";
 import { useToastStore } from "../../store/toastStore";
+import FieldRealDataPanel from "../farm/FieldRealDataPanel";
 import {
   ArrowLeft,
   User,
@@ -55,6 +56,7 @@ interface FarmField {
   current_crop: string;
   sowing_date: string;
   irrigation_method: string;
+  boundary_geojson?: string | null;
   soil_reports: SoilReport[];
 }
 
@@ -346,6 +348,12 @@ export default function ProfileModule({ onBack }: ProfileModuleProps) {
                     <Plus className="h-4 w-4" /> Log Soil Test
                   </button>
                 </div>
+
+                <FieldRealDataPanel
+                  farmId={activeFarm.id}
+                  hasBoundary={!!activeFarm.boundary_geojson}
+                  onBoundarySaved={fetchFarms}
+                />
 
                 {/* Soil NPK Profile */}
                 {activeLatestReport ? (

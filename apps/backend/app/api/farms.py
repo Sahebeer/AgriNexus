@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Any, List, Optional
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api import deps
@@ -414,4 +414,57 @@ def get_farm_soil_estimate(
         "estimate": estimate,
         "farmer_entered": SoilReportOut.model_validate(latest).model_dump() if latest else None,
         "precedence": "farmer_entered values are authoritative; estimate is context only",
+    }
+
+
+async def _read_boundary_upload(file: UploadFile) -> dict:
+    from app.services.realdata.boundary_import import BoundaryImportError, MAX_UPLOAD_BYTES, import_boundary
+    data = await file.read(MAX_UPLOAD_BYTES + 1)
+    try:
+        return import_boundary(file.filename or "", data)
+    except BoundaryImportError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/boundary/parse")
+async def parse_boundary_file(
+    file: UploadFile = File(...),
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """Preview a KML/KMZ/GeoJSON upload: validated polygons, skipped items and the merged boundary."""
+    return await _read_boundary_upload(file)
+
+
+@router.post("/{farm_id}/boundary")
+async def upload_farm_boundary(
+    farm_id: int,
+    file: UploadFile = File(...),
+    feature_index: Optional[int] = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """Save a KML/KMZ/GeoJSON boundary to the farm. Uses all polygons merged unless feature_index is given."""
+    from app.services.realdata.geometry import parse_field_geometry, to_geojson_text
+    farm = db.query(Farm).filter(Farm.id == farm_id, Farm.user_id == current_user.id).first()
+    if not farm:
+        raise HTTPException(status_code=404, detail="Farm field not found or unauthorized")
+    parsed = await _read_boundary_upload(file)
+    if feature_index is not None:
+        if not 0 <= feature_index < len(parsed["features"]):
+            raise HTTPException(status_code=400, detail=f"feature_index must be 0..{len(parsed['features']) - 1}")
+        chosen = parsed["features"][feature_index]["geometry"]
+    else:
+        chosen = parsed["merged"]["geometry"]
+    geom = parse_field_geometry(chosen)
+    farm.boundary_geojson = to_geojson_text(geom)
+    db.commit()
+    from app.services.realdata.geometry import area_summary, centroid_latlon
+    return {
+        "farm_id": farm.id,
+        "saved_geometry_type": geom.geom_type,
+        "area": area_summary(geom),
+        "entered_area": {"value": farm.area, "unit": farm.area_unit},
+        "centroid": list(centroid_latlon(geom)),
+        "features": [{k: v for k, v in f.items() if k != "geometry"} for f in parsed["features"]],
+        "skipped": parsed["skipped"],
     }
