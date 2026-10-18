@@ -25,6 +25,7 @@ class CreateFarmRequest(BaseModel):
     district: str
     village: str
     gps_coordinates: Optional[str] = ""
+    boundary_geojson: Optional[Any] = None  # GeoJSON Polygon/MultiPolygon (geometry, Feature or text)
     current_crop: str
     sowing_date: date
     irrigation_method: str
@@ -108,6 +109,7 @@ class FarmOut(BaseModel):
     district: str
     village: str
     gps_coordinates: Optional[str] = ""
+    boundary_geojson: Optional[str] = None
     current_crop: str
     sowing_date: date
     irrigation_method: str
@@ -157,6 +159,14 @@ def create_farm(
                     detail="GPS coordinates do not match the selected state region. Please verify coordinates."
                 )
 
+    boundary_text = None
+    if payload.boundary_geojson:
+        from app.services.realdata.geometry import GeometryError, parse_field_geometry, to_geojson_text
+        try:
+            boundary_text = to_geojson_text(parse_field_geometry(payload.boundary_geojson))
+        except GeometryError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid field boundary: {e}")
+
     db_farm = Farm(
         user_id=current_user.id,
         name=payload.name,
@@ -166,6 +176,7 @@ def create_farm(
         district=payload.district,
         village=payload.village,
         gps_coordinates=payload.gps_coordinates or "",
+        boundary_geojson=boundary_text,
         current_crop=payload.current_crop,
         sowing_date=payload.sowing_date,
         irrigation_method=payload.irrigation_method,
@@ -352,3 +363,34 @@ def get_earth_forecasts(
     # This triggers the automatic downscale weather ingestion + seeds initial metrics + returns weekly/monthly/seasonal forecasts
     return calculate_explainable_forecasts(db, farm_id)
 
+
+
+def _owned_farm_geometry(db: Session, farm_id: int, user: User):
+    """Return (farm, shapely geometry) for a farm the user owns, or raise 404/400."""
+    from app.services.realdata.geometry import GeometryError, parse_field_geometry
+    farm = db.query(Farm).filter(Farm.id == farm_id, Farm.user_id == user.id).first()
+    if not farm:
+        raise HTTPException(status_code=404, detail="Farm field not found or unauthorized")
+    if not farm.boundary_geojson:
+        raise HTTPException(status_code=400, detail="Farm has no boundary. Draw or import a KML/GeoJSON boundary first.")
+    try:
+        return farm, parse_field_geometry(farm.boundary_geojson)
+    except GeometryError as e:
+        raise HTTPException(status_code=400, detail=f"Stored boundary is invalid: {e}")
+
+
+@router.get("/{farm_id}/vegetation")
+def get_farm_vegetation(
+    farm_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """Real Sentinel-2 L2A NDVI/EVI/SAVI/NDWI time series for the farm boundary (cached per scene)."""
+    from app.services.realdata.geometry import area_summary, centroid_latlon
+    from app.services.realdata.sentinel2 import get_vegetation_series
+    farm, geom = _owned_farm_geometry(db, farm_id, current_user)
+    series = get_vegetation_series(geom, db=db, farm_id=farm.id)
+    series["farm_id"] = farm.id
+    series["area"] = area_summary(geom)
+    series["centroid"] = list(centroid_latlon(geom))
+    return series
