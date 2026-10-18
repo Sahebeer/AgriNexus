@@ -92,6 +92,11 @@ The stack coordinates the following endpoints:
 * **Coordinates Logging:** Map coordinates and acreage size logs.
 * **Soil Profile Configuration:** Saves soil conditions (Clay, Sandy, Loam) per field to optimize irrigation methods (Drip, Sprinklers, Flood).
 
+### 7. Crop Recommendation Engine
+* **Biochemical & Climate Suitability:** Evaluates soil chemistry (N, P, K, pH, moisture), farm microclimate (temperature, humidity, rainfall), and soil texture against a 22-crop Random Forest model.
+* **Seasonal Synchronization:** Aligns sowing plans dynamically to Indian agro-climatic seasons (Kharif, Rabi, Zaid, Perennial) with seasonal multiplier score calibrations.
+* **Dual-Layer Gating:** Enforces hard biological plausibility checks and soft Mahalanobis Out-of-Distribution (OOD) uncertainty boundaries.
+
 ---
 
 ## 📡 Developer Telemetry Ingress

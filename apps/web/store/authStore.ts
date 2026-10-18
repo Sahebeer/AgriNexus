@@ -118,7 +118,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: false });
       return true;
     } catch (err: any) {
-      const errMsg = err.response?.data?.detail || "Registration failed. Email may already be in use.";
+      let errMsg = "Registration failed. Email may already be in use.";
+      const detail = err.response?.data?.detail;
+      if (typeof detail === "string") {
+        errMsg = detail;
+      } else if (Array.isArray(detail)) {
+        errMsg = detail.map((d: any) => d.msg || JSON.stringify(d)).join(", ");
+      } else if (detail && typeof detail === "object") {
+        errMsg = detail.message || JSON.stringify(detail);
+      }
       set({ isLoading: false, error: errMsg });
       return false;
     }

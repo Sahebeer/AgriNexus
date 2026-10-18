@@ -167,7 +167,7 @@ export default function CalendarPage() {
   const eventsByDate = useMemo(() => {
     if (!activeCalendar) return {};
     const map: Record<string, CalendarEvent[]> = {};
-    activeCalendar.events.forEach(e => {
+    (activeCalendar.events || []).forEach(e => {
       (map[e.scheduled_date] = map[e.scheduled_date] ?? []).push(e);
     });
     return map;

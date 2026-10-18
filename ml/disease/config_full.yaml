@@ -1,0 +1,55 @@
+# AgriNexus AI - Disease Model: STAGE 2 "FULL" (long fine-tune, run AFTER config_fast.yaml)
+# Same phase boundaries as config_fast.yaml (P0: 1-5, P1: 6-15, P2: 16+), so it resumes
+# directly from the Stage 1 last_epoch.pth (epoch 19) and extends Phase 2 to epoch 50.
+# First launch must pass --reset-scheduler (starts a fresh warm-restart cycle);
+# later relaunches after a disconnect must NOT pass it.
+#   Phase 2: epochs 16-50 -> 35 epochs; cosine warm-restart cycles of 5, 10, 20 epochs.
+
+model:
+  name: "agrinexus_disease_v2_convnext"
+  backbone: "convnext_base"
+  gate1_backbone: "mobilenet_v3_small"
+  num_classes: 61
+  image_size: 384
+  drop_path_rate: 0.3
+  pretrained: true
+  class_mapping: "ml/disease/class_mapping.json"
+
+ood:
+  gate1_leaf_threshold: 0.80
+  energy_threshold: -6.0
+  entropy_threshold_bits: 2.0
+  confidence_threshold: 0.60
+  ood_auroc_target: 0.0
+
+training:
+  phase0_epochs: 5
+  phase1_epochs: 10
+  phase2_epochs: 35
+  phase2_t0: 5
+  phase2_t_mult: 2
+  batch_size: 32
+  mixup_alpha: 0.2
+  cutmix_alpha: 1.0
+  cutmix_prob: 0.3
+  label_smoothing: 0.05
+  focal_gamma: 2.0
+  focal_weight: 0.4
+  ce_weight: 0.6
+  layer_lr_decay: 0.85
+  head_lr: 0.0005
+  backbone_lr: 0.00005
+  weight_decay_backbone: 0.05
+  weight_decay_head: 0.0001
+  grad_clip_norm: 1.0
+  seed: 42
+  amp_dtype: "float16"
+  early_stopping_patience: 8
+  early_stopping_min_delta: 0.001
+
+paths:
+  data_dir: "leaf_dataset/unified"
+  ood_dir: "sample images"
+  checkpoint_dir: "ml/disease/checkpoints"
+  best_model: "ml/disease/checkpoints/best_model.pth"
+  class_mapping: "ml/disease/class_mapping.json"

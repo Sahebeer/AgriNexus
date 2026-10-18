@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "october-bus": {
+      "serverUrl": "http://127.0.0.1:63263/mcp",
+      "headers": {
+        "X-October-Canvas": "379c7832-aba0-4c43-9b69-6639c8973e66",
+        "X-October-Node": "term-mtv2hch3-i",
+        "X-October-MCP-Capability": "3WOanhNhc1CZ8oNE6-eNn6QDdyS6M3euUN--FeaoXK8"
+      }
+    }
+  }
+}

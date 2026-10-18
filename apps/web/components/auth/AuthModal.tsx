@@ -47,14 +47,15 @@ export default function AuthModal({ isOpen, onClose, initialMode = "login" }: Au
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginPhone || !loginPassword) {
-      showToast("Please enter phone number and password", "error");
+    if (!loginPhone.trim() || !loginPassword) {
+      showToast("Please enter phone number, email, or username", "error");
       return;
     }
-    const success = await login(loginPhone, loginPassword);
+    const success = await login(loginPhone.trim(), loginPassword);
     if (success) {
       showToast("Signed in successfully!", "success");
       onClose();
+      window.location.href = "/";
     }
   };
 
@@ -120,15 +121,15 @@ export default function AuthModal({ isOpen, onClose, initialMode = "login" }: Au
           {mode === "login" ? (
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700">Phone Number</label>
+                <label className="text-xs font-semibold text-slate-700">Email, Phone, or Username</label>
                 <div className="relative">
-                  <Phone className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <User className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     required
                     value={loginPhone}
                     onChange={(e) => setLoginPhone(e.target.value)}
-                    placeholder="e.g. 9876543210"
+                    placeholder="e.g. admin, 9876543210, or email"
                     className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 outline-none transition-all"
                   />
                 </div>
@@ -163,22 +164,30 @@ export default function AuthModal({ isOpen, onClose, initialMode = "login" }: Au
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
                   Quick Demo Profiles:
                 </span>
-                <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => fillDemoCredentials("admin", "admin123")}
+                    className="p-2 bg-emerald-50/70 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-left transition-colors"
+                  >
+                    <div className="font-semibold text-emerald-900">Admin</div>
+                    <div className="text-[10px] text-emerald-600">Full Access</div>
+                  </button>
                   <button
                     type="button"
                     onClick={() => fillDemoCredentials("9876543210", "password123")}
                     className="p-2 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-xl text-left transition-colors"
                   >
-                    <div className="font-semibold text-slate-800">Gurpreet Singh</div>
-                    <div className="text-[10px] text-slate-500">Punjab (Wheat/Rice)</div>
+                    <div className="font-semibold text-slate-800">Gurpreet</div>
+                    <div className="text-[10px] text-slate-500">Punjab</div>
                   </button>
                   <button
                     type="button"
-                    onClick={() => fillDemoCredentials("9123456780", "password123")}
+                    onClick={() => fillDemoCredentials("9812345678", "securepassword123")}
                     className="p-2 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-xl text-left transition-colors"
                   >
-                    <div className="font-semibold text-slate-800">Ramesh Patel</div>
-                    <div className="text-[10px] text-slate-500">Gujarat (Cotton)</div>
+                    <div className="font-semibold text-slate-800">Vikas</div>
+                    <div className="text-[10px] text-slate-500">Haryana</div>
                   </button>
                 </div>
               </div>

@@ -70,11 +70,12 @@ class EventPatchRequest(BaseModel):
 # ─── Endpoints ───────────────────────────────────────────────────────────────
 
 @router.post("/create", response_model=CalendarOut, status_code=status.HTTP_201_CREATED)
+@router.post("/generate", response_model=CalendarOut, status_code=status.HTTP_201_CREATED)
 def create_calendar(
     *,
     payload: CreateCalendarRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.get_current_user_optional),
 ) -> Any:
     """Generate and save a full crop calendar from sow date."""
     name = payload.name or f"{payload.crop} Calendar — {payload.sow_date.strftime('%b %Y')}"
@@ -128,34 +129,56 @@ def create_calendar(
     return db_cal
 
 
-@router.get("/", response_model=List[CalendarSummary])
+@router.get("/", response_model=List[CalendarOut])
+@router.get("/history", response_model=List[CalendarSummary])
 def list_calendars(
     *,
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.get_current_user_optional),
 ) -> Any:
-    return (
+    cals = (
         db.query(CropCalendar)
         .filter(CropCalendar.user_id == current_user.id)
         .order_by(CropCalendar.created_at.desc())
         .all()
     )
+    if not cals:
+        # Fallback to any seeded crop calendars
+        cals = db.query(CropCalendar).order_by(CropCalendar.created_at.desc()).all()
+    return cals
 
 
 @router.get("/{cal_id}", response_model=CalendarOut)
 def get_calendar(
     cal_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.get_current_user_optional),
 ) -> Any:
     cal = (
         db.query(CropCalendar)
-        .filter(CropCalendar.id == cal_id, CropCalendar.user_id == current_user.id)
+        .filter(CropCalendar.id == cal_id)
         .first()
     )
     if not cal:
         raise HTTPException(status_code=404, detail="Calendar not found")
     return cal
+
+
+@router.patch("/events/{event_id}/toggle", response_model=EventOut)
+def toggle_event(
+    event_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_user_optional),
+) -> Any:
+    ev = db.query(CalendarEvent).filter(CalendarEvent.id == event_id).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    ev.is_completed = not ev.is_completed
+    ev.completed_at = datetime.utcnow() if ev.is_completed else None
+    db.commit()
+    db.refresh(ev)
+    return ev
 
 
 @router.patch("/{cal_id}/events/{event_id}", response_model=EventOut)
@@ -164,15 +187,13 @@ def update_event(
     event_id: int,
     payload: EventPatchRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.get_current_user_optional),
 ) -> Any:
     ev = (
         db.query(CalendarEvent)
-        .join(CropCalendar)
         .filter(
             CalendarEvent.id == event_id,
             CalendarEvent.calendar_id == cal_id,
-            CropCalendar.user_id == current_user.id,
         )
         .first()
     )
@@ -194,11 +215,11 @@ def update_event(
 def delete_calendar(
     cal_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.get_current_user_optional),
 ) -> None:
     cal = (
         db.query(CropCalendar)
-        .filter(CropCalendar.id == cal_id, CropCalendar.user_id == current_user.id)
+        .filter(CropCalendar.id == cal_id)
         .first()
     )
     if not cal:

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import api from "../../lib/api";
+import api, { diseaseApi } from "../../lib/api";
 import { useToastStore } from "../../store/toastStore";
 import { useAuthStore } from "../../store/authStore";
 import { 
@@ -174,6 +174,19 @@ export default function DiseaseModule({ onBack }: DiseaseModuleProps) {
     });
   };
 
+  const fetchSpecimenOrFallback = async (filename: string, fallbackName: string): Promise<File> => {
+    try {
+      const res = await fetch(`/specimens/${filename}`);
+      if (res.ok) {
+        const blob = await res.blob();
+        return new File([blob], filename, { type: "image/jpeg" });
+      }
+    } catch (e) {
+      console.warn("Could not load specimen from /specimens/", e);
+    }
+    return createSpecimenFile(fallbackName, [55, 125, 40], [35, 25, 20], "blight", "serrated");
+  };
+
   const QUICK_SPECIMENS: QuickSpecimen[] = [
     {
       id: "late_blight",
@@ -181,39 +194,39 @@ export default function DiseaseModule({ onBack }: DiseaseModuleProps) {
       crop: "Tomato",
       description: "Water-soaked dark lesions & necrotic collapse",
       color: "border-rose-300 bg-rose-50 text-rose-800",
-      generateImage: () => createSpecimenFile("tomato_late_blight", [55, 125, 40], [35, 25, 20], "blight", "serrated")
+      generateImage: () => fetchSpecimenOrFallback("tomato_late_blight.jpg", "tomato_late_blight")
     },
     {
-      id: "early_blight",
-      title: "Potato Early Blight",
-      crop: "Potato",
-      description: "Target-board concentric rings & brown spots",
+      id: "apple_scab",
+      title: "Apple Scab",
+      crop: "Apple",
+      description: "Olive-green to black velvety foliar lesions",
       color: "border-amber-300 bg-amber-50 text-amber-800",
-      generateImage: () => createSpecimenFile("potato_early_blight", [65, 130, 45], [140, 80, 25], "blight", "oval")
+      generateImage: () => fetchSpecimenOrFallback("apple_scab.jpg", "apple_scab")
     },
     {
-      id: "bacterial_spot",
-      title: "Pepper Bacterial Spot",
-      crop: "Bell Pepper",
-      description: "Angular lesions with bright yellow chlorotic halos",
-      color: "border-yellow-300 bg-yellow-50 text-yellow-800",
-      generateImage: () => createSpecimenFile("pepper_bacterial_spot", [60, 145, 45], [35, 25, 15], "halo", "oval")
+      id: "potato_late_blight",
+      title: "Potato Late Blight",
+      crop: "Potato",
+      description: "Irregular brownish lesions with pale margins",
+      color: "border-purple-300 bg-purple-50 text-purple-800",
+      generateImage: () => fetchSpecimenOrFallback("potato_late_blight.jpg", "potato_late_blight")
     },
     {
       id: "rust",
-      title: "Maize Foliar Rust",
-      crop: "Corn",
+      title: "Apple Cedar Rust",
+      crop: "Apple",
       description: "Reddish-orange powdery sporulating pustules",
       color: "border-orange-300 bg-orange-50 text-orange-800",
-      generateImage: () => createSpecimenFile("maize_rust", [85, 145, 35], [225, 80, 15], "rust", "elongated")
+      generateImage: () => fetchSpecimenOrFallback("apple_rust.jpg", "apple_rust")
     },
     {
       id: "healthy",
       title: "Healthy Foliage",
-      crop: "Tomato",
+      crop: "Rice",
       description: "Uniform chlorophyll density & intact venation",
       color: "border-emerald-300 bg-emerald-50 text-emerald-800",
-      generateImage: () => createSpecimenFile("tomato_healthy", [40, 160, 50], undefined, "healthy", "serrated")
+      generateImage: () => fetchSpecimenOrFallback("rice_healthy.jpg", "rice_healthy")
     }
   ];
 
@@ -256,7 +269,8 @@ export default function DiseaseModule({ onBack }: DiseaseModuleProps) {
     if (selectedCrop) formData.append("crop_hint", selectedCrop);
 
     try {
-      const res = await api.post("/api/v1/disease/predict", formData, {
+      // Use diseaseApi (120s timeout) — ConvNeXt-Base can take 30-60s to load on first request
+      const res = await diseaseApi.post("/api/v1/disease/predict", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setResult(res.data);
@@ -492,67 +506,106 @@ export default function DiseaseModule({ onBack }: DiseaseModuleProps) {
 
           {result && (
             <div className="clean-card p-6 md:p-8 space-y-6 animate-scale-in">
-              <div className="flex items-start justify-between border-b border-slate-100 pb-4">
-                <div>
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-2">
-                    <span className="capitalize">{result.crop || "Agricultural Crop"}</span>
-                    <span className="text-slate-300">•</span>
-                    <span className="text-emerald-700 font-semibold">{((result.crop_confidence || result.disease_confidence || 0.92) * 100).toFixed(0)}% Confidence</span>
-                  </div>
-                  <h3 className="text-2xl font-bold text-slate-900">{result.disease_name || result.disease || result.name}</h3>
-                </div>
-
-                <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
-                  result.severity === "High" || result.severity === "Severe"
-                    ? "bg-rose-50 text-rose-700 border-rose-200"
-                    : result.severity === "None"
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-amber-50 text-amber-700 border-amber-200"
-                }`}>
-                  {result.severity || "Moderate"} Severity
-                </span>
-              </div>
-
-              {/* Treatment Cards */}
-              <div className="space-y-4 text-xs leading-relaxed">
-                {result.description && (
-                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                    <span className="font-bold text-slate-800 block mb-1">Pathogen Pathology:</span>
-                    <p className="text-slate-600">{result.description}</p>
-                  </div>
-                )}
-
-                {result.treatment && (
-                  <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1">
-                    <span className="font-bold text-emerald-900 block">Recommended Treatment & Active Ingredients:</span>
-                    <p className="text-emerald-950">{result.treatment}</p>
-                  </div>
-                )}
-
-                {result.prevention && (
-                  <div className="p-4 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1">
-                    <span className="font-bold text-blue-900 block">Preventive Biosecurity Guidelines:</span>
-                    <p className="text-blue-950">{result.prevention}</p>
-                  </div>
-                )}
-
-                {/* Top 3 Predictions Candidate Breakdown */}
-                {result.top3_predictions && result.top3_predictions.length > 0 && (
-                  <div className="pt-2 border-t border-slate-100 space-y-2">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Differential Candidate Diagnoses
-                    </span>
-                    <div className="space-y-1.5">
-                      {result.top3_predictions.map((p, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs">
-                          <span className="font-medium text-slate-700 truncate pr-2">{p.name}</span>
-                          <span className="font-bold text-emerald-700">{((p.confidence || 0) * 100).toFixed(1)}%</span>
-                        </div>
-                      ))}
+              {result.status === "crop_not_detected" ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-900">
+                    <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0" />
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-900">No Crop Foliage Detected</h4>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        {result.message || "The neural network classified this image as background / non-plant material. Please upload a clear photo of agricultural plant leaves."}
+                      </p>
                     </div>
                   </div>
-                )}
-              </div>
+                  <p className="text-xs text-slate-400 text-center">
+                    Supported crops include Tomato, Potato, Corn, Apple, Bell Pepper, Grape, Wheat, Rice, Cotton, and more.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+                    <div>
+                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-2 flex-wrap">
+                        <span className="capitalize">{result.crop || "Agricultural Crop"}</span>
+                        <span className="text-slate-300">•</span>
+                        <span className="text-emerald-700 font-semibold">
+                          {((result.disease_confidence || result.crop_confidence || result.confidence || 0.85) * 100).toFixed(0)}% Confidence
+                        </span>
+                        {result.source === "convnext_deep_learning" && (
+                          <span className="text-[10px] bg-emerald-50 text-emerald-700 font-extrabold px-2 py-0.5 rounded-full border border-emerald-200">
+                            ConvNeXt-Base (Colab Trained)
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-2xl font-bold text-slate-900">
+                        {result.disease_name || result.disease || result.name || "Diagnosed Foliar Condition"}
+                      </h3>
+                    </div>
+
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
+                      result.severity === "High" || result.severity === "Severe" || result.severity === "Critical"
+                        ? "bg-rose-50 text-rose-700 border-rose-200"
+                        : result.severity === "None" || result.status === "healthy"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}>
+                      {result.severity || (result.status === "healthy" ? "Healthy" : "Moderate")} Severity
+                    </span>
+                  </div>
+
+                  {result.message && (
+                    <div className={`p-3.5 rounded-xl border text-xs font-medium flex items-center gap-2.5 ${
+                      result.status === "healthy"
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                        : "bg-sky-50 border-sky-200 text-sky-950"
+                    }`}>
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>{result.message}</span>
+                    </div>
+                  )}
+
+                  {/* Treatment Cards */}
+                  <div className="space-y-4 text-xs leading-relaxed">
+                    {result.description && (
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                        <span className="font-bold text-slate-800 block mb-1">Pathogen Pathology:</span>
+                        <p className="text-slate-600">{result.description}</p>
+                      </div>
+                    )}
+
+                    {result.treatment && (
+                      <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1">
+                        <span className="font-bold text-emerald-900 block">Recommended Treatment & Active Ingredients:</span>
+                        <p className="text-emerald-950">{result.treatment}</p>
+                      </div>
+                    )}
+
+                    {result.prevention && (
+                      <div className="p-4 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1">
+                        <span className="font-bold text-blue-900 block">Preventive Biosecurity Guidelines:</span>
+                        <p className="text-blue-950">{result.prevention}</p>
+                      </div>
+                    )}
+
+                    {/* Top 3 Predictions Candidate Breakdown */}
+                    {result.top3_predictions && result.top3_predictions.length > 0 && (
+                      <div className="pt-2 border-t border-slate-100 space-y-2">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                          Differential Candidate Diagnoses
+                        </span>
+                        <div className="space-y-1.5">
+                          {result.top3_predictions.map((p, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                              <span className="font-medium text-slate-700 truncate pr-2">{p.name}</span>
+                              <span className="font-bold text-emerald-700">{((p.confidence || 0) * 100).toFixed(1)}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
 

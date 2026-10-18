@@ -1,6 +1,7 @@
 # Node / Frontend
 node_modules/
 .next/
+apps/web/.next/
 out/
 build/
 dist/
@@ -8,6 +9,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.tsbuildinfo
 
 # Python / Backend
 venv/
@@ -28,15 +30,31 @@ htmlcov/
 pip-log.txt
 pip-delete-this-directory.txt
 
-# DB & Migrations
+# Databases & Local Logs
 postgres-data/
 *.db
 *.sqlite3
+/tmp/agrinexus_backend.log
 
-# ML Checkpoints
-ml/**/checkpoints/*.pt
-ml/**/checkpoints/*.pth
-ml/**/checkpoints/*.joblib
+# Large Datasets & Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+leaf_dataset/
+datasets/
+
+# ML Large Model Weights & Checkpoints (>100MB)
+*.pth
+*.pt
+*.bin
+*.onnx
+*.h5
+!colab_trained/gate1_model.pth
+ml/**/checkpoints/
+colab_trained/bkp/
+colab_trained/*.pth
 apps/backend/app/services/vision/models/*.joblib
 ml/datasets/raw/
 
@@ -51,10 +69,11 @@ ml/datasets/raw/
 # Docker
 .docker/
 
-# OS Specific
+# OS / Editor Specific
 .DS_Store
+**/.DS_Store
 Thumbs.db
+.cursor/
+.kilo/
+.lean_ai/
 
-# October (generated — context bus / browser MCP)
-.codex/config.toml
-.codex/hooks.json

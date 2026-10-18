@@ -12,7 +12,9 @@ console.log("  * Swagger Documentation: http://localhost:8000/docs");
 console.log("  * Next.js Web Console:   http://localhost:3000\n");
 
 // 1. Start Python FastAPI Backend
-const backendCmd = "python";
+const fs = require("fs");
+const venvPy = path.join(rootDir, isWin ? ".venv/Scripts/python.exe" : ".venv/bin/python");
+const backendCmd = fs.existsSync(venvPy) ? venvPy : (isWin ? "python" : "python3");
 const backendArgs = [
   "-m",
   "uvicorn",
@@ -22,6 +24,10 @@ const backendArgs = [
   "--port",
   "8000",
   "--reload",
+  "--reload-dir",
+  "apps/backend",
+  "--reload-dir",
+  "ml",
   "--app-dir",
   "apps/backend",
 ];

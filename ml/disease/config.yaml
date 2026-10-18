@@ -1,96 +1,49 @@
+# AgriNexus AI - Plant Disease Detection Model Configuration
+# Architecture: ConvNeXt-Base with Dual-Gate OOD Rejection & 61-Class Taxonomy
+
 model:
-  name: "agrinexus_disease_efficientnet"
-  backbone: "efficientnet_b0"
-  num_classes: 15
-  image_size: 224
+  name: "agrinexus_disease_v2_convnext"
+  backbone: "convnext_base"
+  gate1_backbone: "mobilenet_v3_small"
+  num_classes: 61
+  image_size: 384
+  drop_path_rate: 0.3
   pretrained: true
+  class_mapping: "colab_trained/class_mapping.json"
 
-taxonomy:
-  crops:
-    - "tomato"
-    - "potato"
-    - "bell_pepper"
-    - "wheat"
-    - "corn"
-  classes:
-    - id: "pepper_bacterial_spot"
-      crop: "bell_pepper"
-      disease: "bacterial_spot"
-      label: "Bell Pepper Bacterial Spot"
-    - id: "pepper_healthy"
-      crop: "bell_pepper"
-      disease: "healthy"
-      label: "Bell Pepper Healthy Foliage"
-    - id: "potato_early_blight"
-      crop: "potato"
-      disease: "early_blight"
-      label: "Potato Early Blight"
-    - id: "potato_late_blight"
-      crop: "potato"
-      disease: "late_blight"
-      label: "Potato Late Blight"
-    - id: "potato_healthy"
-      crop: "potato"
-      disease: "healthy"
-      label: "Potato Healthy Foliage"
-    - id: "tomato_bacterial_spot"
-      crop: "tomato"
-      disease: "bacterial_spot"
-      label: "Tomato Bacterial Spot"
-    - id: "tomato_early_blight"
-      crop: "tomato"
-      disease: "early_blight"
-      label: "Tomato Early Blight"
-    - id: "tomato_late_blight"
-      crop: "tomato"
-      disease: "late_blight"
-      label: "Tomato Late Blight"
-    - id: "tomato_leaf_mold"
-      crop: "tomato"
-      disease: "leaf_mold"
-      label: "Tomato Leaf Mold"
-    - id: "tomato_septoria_leaf_spot"
-      crop: "tomato"
-      disease: "septoria_leaf_spot"
-      label: "Tomato Septoria Leaf Spot"
-    - id: "tomato_spider_mites"
-      crop: "tomato"
-      disease: "spider_mites"
-      label: "Tomato Two-Spotted Spider Mite"
-    - id: "tomato_target_spot"
-      crop: "tomato"
-      disease: "target_spot"
-      label: "Tomato Target Spot"
-    - id: "tomato_yellow_leaf_curl"
-      crop: "tomato"
-      disease: "yellow_leaf_curl"
-      label: "Tomato Yellow Leaf Curl Virus"
-    - id: "tomato_mosaic_virus"
-      crop: "tomato"
-      disease: "mosaic_virus"
-      label: "Tomato Mosaic Virus"
-    - id: "tomato_healthy"
-      crop: "tomato"
-      disease: "healthy"
-      label: "Tomato Healthy Foliage"
-
-thresholds:
-  crop_classifier: 0.85
-  disease_classifier: 0.80
-  energy_ood_threshold: -5.0
-  entropy_uncertain_threshold: 1.8
+ood:
+  gate1_enabled: false
+  gate1_leaf_threshold: 0.80
+  energy_threshold: -2.0
+  entropy_threshold_bits: 4.5
+  confidence_threshold: 0.25
 
 training:
-  phase1_epochs: 10
-  phase2_epochs: 20
+  phase0_epochs: 5
+  phase1_epochs: 15
+  phase2_epochs: 30
   batch_size: 32
-  head_lr: 0.001
-  backbone_lr: 0.00005
-  label_smoothing: 0.1
   mixup_alpha: 0.2
+  cutmix_alpha: 1.0
+  cutmix_prob: 0.3
+  label_smoothing: 0.05
+  focal_gamma: 2.0
+  focal_weight: 0.4
+  ce_weight: 0.6
+  layer_lr_decay: 0.85
+  head_lr: 0.0005
+  backbone_lr: 0.00005
+  weight_decay_backbone: 0.05
+  weight_decay_head: 0.0001
+  grad_clip_norm: 1.0
   seed: 42
+  amp_dtype: "bfloat16"
+  early_stopping_patience: 8
+  early_stopping_min_delta: 0.001
 
 paths:
-  data_dir: "ml/datasets"
-  checkpoint_dir: "ml/disease/checkpoints"
-  best_model: "ml/disease/checkpoints/leaf_disease_efficientnet.pth"
+  data_dir: "leaf_dataset/unified"
+  ood_dir: "sample images"
+  checkpoint_dir: "colab_trained"
+  best_model: "colab_trained/best_model.pth"
+  class_mapping: "colab_trained/class_mapping.json"

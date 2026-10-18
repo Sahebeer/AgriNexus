@@ -9,14 +9,14 @@ Performs objective pre-flight quality checks before ML inference:
 
 import io
 import logging
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional
 from PIL import Image, ImageFilter
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
 
-def validate_crop_image(image_bytes: bytes, max_size_bytes: int = 10 * 1024 * 1024) -> Tuple[bool, Dict[str, Any], Image.Image | None]:
+def validate_crop_image(image_bytes: bytes, max_size_bytes: int = 10 * 1024 * 1024) -> Tuple[bool, Dict[str, Any], Optional[Image.Image]]:
     """
     Validates uploaded image against quality and integrity standards.
     Returns:

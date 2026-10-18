@@ -1,0 +1,4 @@
+app/services/PlantVillage
+__pycache__
+*.pyc
+.pytest_cache

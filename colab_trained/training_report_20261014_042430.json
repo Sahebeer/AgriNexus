@@ -1,0 +1,19 @@
+{
+  "status": "COMPLETED",
+  "backbone": "convnext_base",
+  "num_classes": 61,
+  "best_epoch": 0,
+  "best_val_macro_f1": 0.0,
+  "best_val_acc": 0.0,
+  "best_ood_auroc": null,
+  "total_nan_batches": 0,
+  "phases": {
+    "phase2": {
+      "start_epoch": 17,
+      "final_val_f1": 0.8787170648574829,
+      "final_val_acc": 0.9753506779670715
+    }
+  },
+  "class_mapping_version": "2.0",
+  "timestamp": "2026-10-14T04:24:30.436189+00:00"
+}

@@ -29,6 +29,7 @@ services:
       - ENVIRONMENT=development
     volumes:
       - ./apps/backend:/app
+      - ./ml:/app/ml
     depends_on:
       db:
         condition: service_healthy

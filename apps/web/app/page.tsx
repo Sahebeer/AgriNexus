@@ -21,6 +21,8 @@ import CalendarModule from "../components/modules/CalendarModule";
 import ExpensesModule from "../components/modules/ExpensesModule";
 import ProfileModule from "../components/modules/ProfileModule";
 import SatelliteModule from "../components/modules/SatelliteModule";
+import SoilPredictionModule from "../components/modules/SoilPredictionModule";
+import CropRecommendationModule from "../components/modules/CropRecommendationModule";
 
 import {
   Sprout,
@@ -37,6 +39,7 @@ import {
   FileText,
   Compass,
   Satellite,
+  FlaskConical,
   User,
   LogOut,
   LogIn,
@@ -47,7 +50,7 @@ import {
   Bell,
   Layers,
   Clock,
-  Shield
+  Shield,
 } from "lucide-react";
 
 type ModuleKey =
@@ -63,7 +66,9 @@ type ModuleKey =
   | "expenses"
   | "timeline"
   | "profile"
-  | "satellite";
+  | "satellite"
+  | "soil-prediction"
+  | "crop-recommendation";
 
 interface NavItem {
   id: ModuleKey;
@@ -83,6 +88,8 @@ const NAV_ITEMS: NavItem[] = [
   { id: "prices", label: "Commodity Rates & MSP", icon: TrendingUp, category: "insights" },
   { id: "mandi", label: "Trade Marketplace", icon: Coins, category: "insights" },
   { id: "schemes", label: "Govt Subsidies", icon: ShieldCheck, category: "insights" },
+  { id: "soil-prediction", label: "AI Soil Prediction", icon: FlaskConical, category: "insights" },
+  { id: "crop-recommendation", label: "Crop Recommender", icon: Sprout, category: "insights" },
 
   { id: "calendar", label: "Sowing Schedule", icon: CalendarDays, category: "operations" },
   { id: "shopping", label: "Inputs Calculator", icon: Calculator, category: "operations" },
@@ -424,6 +431,8 @@ function MainConsoleContent() {
           {activeTab === "timeline" && <TimelineModule onBack={() => handleTabChange("overview")} />}
           {activeTab === "profile" && <ProfileModule onBack={() => handleTabChange("overview")} />}
           {activeTab === "satellite" && <SatelliteModule onBack={() => handleTabChange("overview")} />}
+          {activeTab === "soil-prediction" && <SoilPredictionModule onBack={() => handleTabChange("overview")} />}
+          {activeTab === "crop-recommendation" && <CropRecommendationModule onBack={() => handleTabChange("overview")} />}
         </main>
       </div>
 

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import api from "../../lib/api";
+import api, { diseaseApi } from "../../lib/api";
 import { useAuthStore } from "../../store/authStore";
 import { useToastStore } from "../../store/toastStore";
 import {
@@ -207,6 +207,19 @@ export default function AdminDashboardPage() {
     });
   };
 
+  const fetchAdminSpecimen = async (filename: string, fallbackName: string): Promise<File> => {
+    try {
+      const res = await fetch(`/specimens/${filename}`);
+      if (res.ok) {
+        const blob = await res.blob();
+        return new File([blob], filename, { type: "image/jpeg" });
+      }
+    } catch {
+      // fallback
+    }
+    return createSpecimenFile(fallbackName, [60, 130, 45], [45, 30, 25], "blight");
+  };
+
   const ADMIN_SPECIMENS: AdminSpecimen[] = [
     {
       id: "demo_late_blight",
@@ -215,43 +228,43 @@ export default function AdminDashboardPage() {
       symptom: "Water-soaked dark lesions & necrotic collapse",
       tag: "Oomycete / High Severity",
       color: "border-rose-300 bg-rose-50 text-rose-900",
-      generate: () => createSpecimenFile("demo_late_blight", [60, 130, 45], [45, 30, 25], "blight")
+      generate: () => fetchAdminSpecimen("tomato_late_blight.jpg", "demo_late_blight")
     },
     {
-      id: "demo_early_blight",
-      name: "Potato Early Blight",
-      crop: "Potato",
-      symptom: "Alternaria solani concentric rings",
+      id: "demo_apple_scab",
+      name: "Apple Scab",
+      crop: "Apple",
+      symptom: "Olive-green to black velvety foliar lesions",
       tag: "Fungal / Medium Severity",
       color: "border-amber-300 bg-amber-50 text-amber-900",
-      generate: () => createSpecimenFile("demo_early_blight", [70, 135, 50], [130, 75, 30], "blight")
+      generate: () => fetchAdminSpecimen("apple_scab.jpg", "demo_apple_scab")
     },
     {
-      id: "demo_bacterial_spot",
-      name: "Bell Pepper Bacterial Spot",
-      crop: "Bell Pepper",
-      symptom: "Xanthomonas angular spots & chlorotic halos",
-      tag: "Bacterial / Medium Severity",
-      color: "border-yellow-300 bg-yellow-50 text-yellow-900",
-      generate: () => createSpecimenFile("demo_bacterial_spot", [65, 140, 50], [40, 30, 20], "halo")
+      id: "demo_potato_late_blight",
+      name: "Potato Late Blight",
+      crop: "Potato",
+      symptom: "Irregular brownish lesions with pale margins",
+      tag: "Oomycete / High Severity",
+      color: "border-purple-300 bg-purple-50 text-purple-900",
+      generate: () => fetchAdminSpecimen("potato_late_blight.jpg", "demo_potato_late_blight")
     },
     {
       id: "demo_rust",
-      name: "Maize Foliar Rust",
-      crop: "Corn",
-      symptom: "Puccinia reddish-orange pustules",
+      name: "Apple Cedar Rust",
+      crop: "Apple",
+      symptom: "Puccinia / Gymnosporangium sporulating pustules",
       tag: "Fungal / Medium Severity",
       color: "border-orange-300 bg-orange-50 text-orange-900",
-      generate: () => createSpecimenFile("demo_rust", [90, 140, 40], [210, 75, 20], "rust")
+      generate: () => fetchAdminSpecimen("apple_rust.jpg", "demo_rust")
     },
     {
       id: "demo_healthy",
-      name: "Healthy Tomato Specimen",
-      crop: "Tomato",
+      name: "Healthy Foliage Specimen",
+      crop: "Rice",
       symptom: "Uniform chlorophyll density & zero pathology",
       tag: "Normal / Vigorous",
       color: "border-emerald-300 bg-emerald-50 text-emerald-900",
-      generate: () => createSpecimenFile("demo_healthy", [45, 160, 55], undefined, "healthy")
+      generate: () => fetchAdminSpecimen("rice_healthy.jpg", "demo_healthy")
     }
   ];
 
@@ -267,7 +280,7 @@ export default function AdminDashboardPage() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await api.post("/api/v1/disease/predict", formData, {
+      const res = await diseaseApi.post("/api/v1/disease/predict", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -494,10 +507,15 @@ export default function AdminDashboardPage() {
                     <>
                       <div className="flex items-start justify-between border-b border-slate-100 pb-4">
                         <div>
-                          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-2">
-                            <span>{visionResult.crop || "Agricultural Crop"}</span>
+                          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-2 flex-wrap">
+                            <span className="capitalize">{visionResult.crop || "Agricultural Crop"}</span>
                             <span>•</span>
-                            <span className="text-emerald-700 font-bold">{((visionResult.disease_confidence || 0.94) * 100).toFixed(0)}% Confidence</span>
+                            <span className="text-emerald-700 font-bold">{(((visionResult.disease_confidence || visionResult.crop_confidence || visionResult.confidence || 0.85)) * 100).toFixed(0)}% Confidence</span>
+                            {visionResult.source === "convnext_deep_learning" && (
+                              <span className="text-[10px] bg-emerald-50 text-emerald-700 font-extrabold px-2 py-0.5 rounded-full border border-emerald-200">
+                                ConvNeXt-Base (Colab Trained)
+                              </span>
+                            )}
                           </div>
                           <h3 className="text-xl font-bold text-slate-900">{visionResult.disease_name || visionResult.name}</h3>
                         </div>

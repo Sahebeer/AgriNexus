@@ -1,10 +1,12 @@
 import sys
 from pathlib import Path
 
-# Ensure project root is in sys.path for ml package access
-root_dir = Path(__file__).resolve().parents[3]
-if str(root_dir) not in sys.path:
-    sys.path.insert(0, str(root_dir))
+# Ensure directory containing ml package is in sys.path
+for p in Path(__file__).resolve().parents:
+    if (p / "ml").is_dir():
+        if str(p) not in sys.path:
+            sys.path.insert(0, str(p))
+        break
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,6 +27,8 @@ from app.api.farms import router as farms_router
 from app.api.satellite import router as satellite_router
 from app.api.satellite_maps import router as satellite_maps_router
 from app.api.admin import router as admin_router
+from app.api.soil import router as soil_router
+from app.api.crops import router as crops_router
 from app.db.database import engine, Base
 from app.db.database import SessionLocal
 from app.models.user import User # For schema bootstrapping
@@ -85,6 +89,8 @@ app.include_router(farms_router, prefix=f"{settings.API_V1_STR}/farms", tags=["f
 app.include_router(satellite_router, prefix=f"{settings.API_V1_STR}/satellite", tags=["satellite"])
 app.include_router(satellite_maps_router, prefix=f"{settings.API_V1_STR}/satellite-maps", tags=["satellite-maps"])
 app.include_router(admin_router, prefix=f"{settings.API_V1_STR}/admin", tags=["admin"])
+app.include_router(soil_router, prefix=f"{settings.API_V1_STR}/soil", tags=["soil"])
+app.include_router(crops_router, prefix=f"{settings.API_V1_STR}/crops", tags=["crops"])
 
 @app.get("/")
 def root_redirect():

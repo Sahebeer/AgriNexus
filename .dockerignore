@@ -1,0 +1,7 @@
+apps/backend
+node_modules
+.next
+.git
+.agents
+ml
+docs

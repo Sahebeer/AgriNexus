@@ -28,7 +28,7 @@ async def analyze_crop(
     image: Optional[UploadFile] = File(None),
     file: Optional[UploadFile] = File(None),
     crop_hint: Optional[str] = Form(None),
-    current_user: Optional[User] = Depends(deps.get_current_active_user_optional if hasattr(deps, 'get_current_active_user_optional') else deps.get_current_active_user),
+    current_user: Optional[User] = Depends(deps.get_current_active_user_optional),
 ) -> Any:
     """
     Unified Multi-Stage Agricultural Computer Vision Pipeline.
@@ -129,7 +129,7 @@ async def predict_leaf_disease(
     file: Optional[UploadFile] = File(None),
     image: Optional[UploadFile] = File(None),
     crop_hint: Optional[str] = Form(None),
-    current_user: Optional[User] = Depends(deps.get_current_active_user_optional if hasattr(deps, 'get_current_active_user_optional') else deps.get_current_active_user),
+    current_user: Optional[User] = Depends(deps.get_current_active_user_optional),
 ) -> Any:
     """
     Direct predict endpoint used by UI components.
@@ -144,7 +144,7 @@ async def detect_leaf_disease(
     file: Optional[UploadFile] = File(None),
     image: Optional[UploadFile] = File(None),
     crop_hint: Optional[str] = Form(None),
-    current_user: Optional[User] = Depends(deps.get_current_active_user_optional if hasattr(deps, 'get_current_active_user_optional') else deps.get_current_active_user),
+    current_user: Optional[User] = Depends(deps.get_current_active_user_optional),
 ) -> Any:
     """
     Backward-compatible disease detection endpoint.

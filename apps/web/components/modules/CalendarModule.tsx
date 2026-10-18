@@ -57,9 +57,19 @@ export default function CalendarModule({ onBack }: CalendarModuleProps) {
     setIsLoading(true);
     try {
       const res = await api.get("/api/v1/calendar/");
-      setCalendars(res.data);
-      if (res.data.length > 0 && !activeCal) {
-        setActiveCal(res.data[0]);
+      const list = res.data || [];
+      setCalendars(list);
+      if (list.length > 0 && !activeCal) {
+        if (!list[0].events || list[0].events.length === 0) {
+          try {
+            const detail = await api.get(`/api/v1/calendar/${list[0].id}`);
+            setActiveCal(detail.data);
+          } catch {
+            setActiveCal(list[0]);
+          }
+        } else {
+          setActiveCal(list[0]);
+        }
       }
     } catch {
       // Fallback
@@ -101,7 +111,7 @@ export default function CalendarModule({ onBack }: CalendarModuleProps) {
         if (!prev) return null;
         return {
           ...prev,
-          events: prev.events.map((ev) => (ev.id === eventId ? { ...ev, is_completed: !ev.is_completed } : ev)),
+          events: (prev.events || []).map((ev) => (ev.id === eventId ? { ...ev, is_completed: !ev.is_completed } : ev)),
         };
       });
     } catch {
@@ -175,7 +185,7 @@ export default function CalendarModule({ onBack }: CalendarModuleProps) {
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phenological Growth Milestones</h3>
 
             <div className="space-y-3">
-              {activeCal.events.map((ev) => (
+              {(activeCal.events || []).map((ev) => (
                 <div
                   key={ev.id}
                   onClick={() => handleToggleEvent(ev.id)}

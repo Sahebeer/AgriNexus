@@ -19,19 +19,14 @@ export default function LoginPage() {
     setValidationError(null);
     clearError();
 
-    if (!email || !password) {
-      setValidationError("Please fill in all fields.");
+    if (!email.trim() || !password) {
+      setValidationError("Please enter your email, phone number, or username.");
       return;
     }
 
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      setValidationError("Please enter a valid email address.");
-      return;
-    }
-
-    const success = await login(email, password);
+    const success = await login(email.trim(), password);
     if (success) {
-      router.push("/dashboard");
+      window.location.href = "/";
     }
   };
 

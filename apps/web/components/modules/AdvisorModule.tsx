@@ -74,6 +74,16 @@ export default function AdvisorModule({ onBack }: AdvisorModuleProps) {
     fetchContextData();
   }, []);
 
+  const selectSession = async (sessionId: string) => {
+    setActiveSessionId(sessionId);
+    try {
+      const res = await api.get(`/api/v1/advisor/sessions/${sessionId}`);
+      setMessages(res.data);
+    } catch {
+      showToast("Unable to load chat session messages", "error");
+    }
+  };
+
   const fetchSessions = async () => {
     setIsLoadingHistory(true);
     try {
@@ -92,16 +102,6 @@ export default function AdvisorModule({ onBack }: AdvisorModuleProps) {
   useEffect(() => {
     fetchSessions();
   }, []);
-
-  const selectSession = async (sessionId: string) => {
-    setActiveSessionId(sessionId);
-    try {
-      const res = await api.get(`/api/v1/advisor/sessions/${sessionId}`);
-      setMessages(res.data);
-    } catch {
-      showToast("Unable to load chat session messages", "error");
-    }
-  };
 
   const handleCreateNewSession = () => {
     setActiveSessionId(null);
@@ -148,12 +148,13 @@ export default function AdvisorModule({ onBack }: AdvisorModuleProps) {
 
     try {
       const res = await api.post("/api/v1/advisor/chat", {
+        content: userText,
         message: userText,
         session_id: activeSessionId || undefined
       });
 
       const data = res.data;
-      if (!activeSessionId) {
+      if (!activeSessionId && data.session_id) {
         setActiveSessionId(data.session_id);
         fetchSessions();
       }
@@ -162,7 +163,7 @@ export default function AdvisorModule({ onBack }: AdvisorModuleProps) {
         id: Date.now() + 1,
         session_id: data.session_id,
         sender: "bot",
-        content: data.response
+        content: data.response || data.content || "Agronomic advice generated."
       };
       setMessages(prev => [...prev, botMsg]);
     } catch (err: any) {
@@ -340,23 +341,30 @@ export default function AdvisorModule({ onBack }: AdvisorModuleProps) {
           </div>
 
           {/* Chat Input Bar */}
-          <form onSubmit={handleSendMessage} className="pt-4 border-t border-slate-100 flex gap-2">
+          <div className="pt-4 border-t border-slate-100 flex gap-2">
             <input
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
               placeholder="Ask the AI Agronomist any farming question..."
               className="flex-1 bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 outline-none transition-colors"
             />
             <button
-              type="submit"
+              type="button"
+              onClick={() => handleSendMessage()}
               disabled={isGenerating || !inputMessage.trim()}
               className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
             >
               <span>Send</span>
               <Send className="h-3.5 w-3.5" />
             </button>
-          </form>
+          </div>
         </div>
       </div>
     </div>

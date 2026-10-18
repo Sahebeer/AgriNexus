@@ -20,7 +20,8 @@ import {
   Scan,
   Compass,
   Satellite,
-  Lock
+  Lock,
+  FlaskConical,
 } from "lucide-react";
 
 interface OverviewModuleProps {
@@ -78,6 +79,13 @@ export default function OverviewModule({ onNavigate, onOpenAuth }: OverviewModul
       desc: "5-day agro-meteorological forecasting & spray window alerts.",
       icon: CloudSun,
       color: "text-amber-700 bg-amber-50 border-amber-200",
+    },
+    {
+      id: "soil-prediction",
+      title: "AI Soil Prediction",
+      desc: "Match pH, NPK, moisture and texture to crop requirements with a practical fertilizer plan.",
+      icon: FlaskConical,
+      color: "text-emerald-700 bg-emerald-50 border-emerald-200",
     },
     {
       id: "prices",
@@ -201,7 +209,7 @@ export default function OverviewModule({ onNavigate, onOpenAuth }: OverviewModul
         </div>
       </div>
 
-      {/* 12-Module Grid */}
+      {/* Module Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {features.map((f) => {
           const Icon = f.icon;

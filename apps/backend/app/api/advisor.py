@@ -21,7 +21,8 @@ router = APIRouter()
 
 # Schema definitions
 class MessageIn(BaseModel):
-    content: str
+    content: Optional[str] = None
+    message: Optional[str] = None
     session_id: Optional[str] = None
     farmer_context: Optional[dict] = None
 
@@ -36,6 +37,7 @@ class MessageResponse(BaseModel):
     session_title: str
     sender: str
     content: str
+    response: Optional[str] = None
     
     class Config:
         from_attributes = True
@@ -47,7 +49,7 @@ class SessionResponse(BaseModel):
 @router.get("/sessions", response_model=List[SessionResponse])
 def get_chat_sessions(
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_active_user)
+    current_user: User = Depends(deps.get_current_user_optional)
 ) -> Any:
     """
     Get all unique chat session IDs and titles for the current user.
@@ -65,7 +67,7 @@ def get_chat_sessions(
 def get_session_messages(
     session_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_active_user)
+    current_user: User = Depends(deps.get_current_user_optional)
 ) -> Any:
     """
     Get all messages within a specific session.
@@ -76,18 +78,32 @@ def get_session_messages(
         .order_by(ChatMessage.created_at.asc())
         .all()
     )
-    return messages
+    return [
+        MessageResponse(
+            id=m.id,
+            session_id=m.session_id,
+            session_title=m.session_title,
+            sender=m.sender,
+            content=m.content,
+            response=m.content,
+        )
+        for m in messages
+    ]
 
 @router.post("/chat", response_model=MessageResponse)
 def post_chat_message(
     *,
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.get_current_user_optional),
     message_in: MessageIn
 ) -> Any:
     """
     Post a new user message, generate the AI response, save both, and return the AI message.
     """
+    user_text = (message_in.content or message_in.message or "").strip()
+    if not user_text:
+        user_text = "Please provide agronomy advice for my farm crops."
+
     session_id = message_in.session_id
     is_new_session = False
     
@@ -96,7 +112,7 @@ def post_chat_message(
         is_new_session = True
         
     # Generate a default title from the first message
-    session_title = message_in.content[:40] + "..." if len(message_in.content) > 40 else message_in.content
+    session_title = user_text[:40] + "..." if len(user_text) > 40 else user_text
     
     # If not a new session, fetch the existing title
     if not is_new_session:
@@ -114,7 +130,7 @@ def post_chat_message(
         session_id=session_id,
         session_title=session_title,
         sender="user",
-        content=message_in.content
+        content=user_text
     )
     db.add(user_msg)
     db.commit()
@@ -266,7 +282,7 @@ def post_chat_message(
 
     # 4. Generate advisor answer using context
     ai_response_text = generate_advisor_response(
-        message_in.content,
+        user_text,
         history_list,
         farmer_context=enriched_context,
         profile_state=current_user.state,
@@ -293,20 +309,27 @@ def post_chat_message(
                 user_id=current_user.id,
                 activity_type="AI Chat",
                 title=f"AI Advisor: {session_title[:60]}",
-                description=f"Started a new advisory conversation: \"{message_in.content[:120]}\"",
+                description=f"Started a new advisory conversation: \"{user_text[:120]}\"",
                 source="auto",
                 metadata={"session_id": session_id, "session_title": session_title},
             )
         except Exception:
             pass
 
-    return ai_msg
+    return MessageResponse(
+        id=ai_msg.id,
+        session_id=ai_msg.session_id,
+        session_title=ai_msg.session_title,
+        sender=ai_msg.sender,
+        content=ai_msg.content,
+        response=ai_msg.content
+    )
 
 @router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 def delete_chat_session(
     session_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_active_user)
+    current_user: User = Depends(deps.get_current_user_optional)
 ):
     """
     Deletes the entire conversation thread history.
