@@ -19,6 +19,48 @@ interface WeatherModuleProps {
   onBack?: () => void;
 }
 
+// Simple, transparent spray rule from real forecast values (not a model).
+function sprayAdvice(rainChance: number | undefined, wind: number | undefined): string {
+  if ((rainChance ?? 0) >= 60 || (wind ?? 0) > 20) return "Avoid";
+  if ((rainChance ?? 0) >= 30 || (wind ?? 0) > 15) return "Moderate";
+  return "Optimal";
+}
+
+export function WeatherProvenance({ data }: { data: any }) {
+  const agri = data?.agri_indices;
+  const isDemo = data?.source === "demo";
+  return (
+    <div className="clean-card p-4 space-y-3 text-xs">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`px-2 py-0.5 rounded font-bold uppercase text-[10px] border ${isDemo ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+          {isDemo ? "Demo data" : `Source: ${data?.source ?? "unknown"}`}
+        </span>
+        {data?.location_basis && (
+          <span className="text-slate-500">
+            Location: {data.location_basis}
+            {data.lat != null && ` (${Number(data.lat).toFixed(3)}, ${Number(data.lon).toFixed(3)})`}
+          </span>
+        )}
+        {data?.source_note && <span className="text-amber-700">{data.source_note}</span>}
+      </div>
+      {agri && agri.source !== "unavailable" && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div><span className="text-slate-400 block text-[10px] uppercase">GDD last 30 d (base {agri.gdd_base_c}°C)</span><b>{agri.gdd_last_30d}</b></div>
+          <div><span className="text-slate-400 block text-[10px] uppercase">GDD since sowing</span><b>{agri.gdd_since_sowing ?? "n/a"}</b></div>
+          <div><span className="text-slate-400 block text-[10px] uppercase">30-day water balance (P - ET0)</span><b>{agri.water_balance_30d_mm} mm</b></div>
+          <div><span className="text-slate-400 block text-[10px] uppercase">Drought index</span><b>{agri.drought_index ?? "n/a"}</b> <span className="text-slate-500">({agri.drought_category})</span></div>
+          <div className="col-span-2 sm:col-span-4 text-[10px] text-slate-400">
+            {agri.source} · as of {agri.as_of} · {agri.drought_method}
+          </div>
+        </div>
+      )}
+      {agri && agri.source === "unavailable" && (
+        <div className="text-[11px] text-slate-500">Agro indices unavailable: {agri.error}</div>
+      )}
+    </div>
+  );
+}
+
 export default function WeatherModule({ onBack }: WeatherModuleProps) {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -84,6 +126,7 @@ export default function WeatherModule({ onBack }: WeatherModuleProps) {
         </div>
       ) : data ? (
         <div className="space-y-6">
+          <WeatherProvenance data={data} />
           {/* Top Real-time Gauge Card */}
           <div className="clean-card p-6 md:p-8 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-md">
             <div className="space-y-2">
@@ -93,7 +136,7 @@ export default function WeatherModule({ onBack }: WeatherModuleProps) {
                 <span className="text-sm font-semibold text-slate-300 capitalize">{data.condition ?? "Clear Sky"}</span>
               </div>
               <p className="text-xs text-slate-400 max-w-md">
-                Humidity: {data.humidity ?? 54}% • Wind: {data.wind_speed ?? 12} km/h • Rainfall Prob: {data.rain_probability ?? 10}%
+                Humidity: {data.humidity ?? 54}% • Wind: {data.wind_speed ?? 12} km/h • Rainfall Prob: {data.rain_chance ?? "n/a"}%
               </p>
             </div>
 
@@ -101,12 +144,12 @@ export default function WeatherModule({ onBack }: WeatherModuleProps) {
               <div className="p-4 bg-slate-800/80 border border-slate-700 rounded-2xl text-center">
                 <Droplets className="h-5 w-5 text-blue-400 mx-auto mb-1" />
                 <span className="text-[10px] text-slate-400 uppercase font-semibold block">Spray Window</span>
-                <span className="text-xs font-bold text-emerald-400 block mt-0.5">Optimal Today</span>
+                <span className="text-xs font-bold text-emerald-400 block mt-0.5">{sprayAdvice(data.rain_chance, data.wind_speed)} Today</span>
               </div>
               <div className="p-4 bg-slate-800/80 border border-slate-700 rounded-2xl text-center">
                 <Wind className="h-5 w-5 text-amber-400 mx-auto mb-1" />
                 <span className="text-[10px] text-slate-400 uppercase font-semibold block">Wind Safety</span>
-                <span className="text-xs font-bold text-emerald-400 block mt-0.5">Safe (&lt;15 km/h)</span>
+                <span className="text-xs font-bold text-emerald-400 block mt-0.5">{(data.wind_speed ?? 0) <= 15 ? "Safe (<15 km/h)" : `Caution (${data.wind_speed} km/h)`}</span>
               </div>
             </div>
           </div>
@@ -118,13 +161,13 @@ export default function WeatherModule({ onBack }: WeatherModuleProps) {
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
-              {(data.daily_forecast || [
-                { day: "Today", temp: "29°C / 18°C", condition: "Sunny", rain: "5%", spray: "Optimal" },
-                { day: "Tomorrow", temp: "30°C / 19°C", condition: "Partly Cloudy", rain: "15%", spray: "Optimal" },
-                { day: "Day 3", temp: "28°C / 18°C", condition: "Light Rain", rain: "65%", spray: "Avoid" },
-                { day: "Day 4", temp: "27°C / 17°C", condition: "Cloudy", rain: "30%", spray: "Moderate" },
-                { day: "Day 5", temp: "31°C / 20°C", condition: "Clear", rain: "0%", spray: "Optimal" },
-              ]).map((d: any, idx: number) => (
+              {(data.forecast || []).map((f: any) => ({
+                day: f.day,
+                temp: `${f.temp}°C avg`,
+                condition: f.condition,
+                rain: `${f.rain_chance}%`,
+                spray: sprayAdvice(f.rain_chance, undefined),
+              })).map((d: any, idx: number) => (
                 <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-2">
                   <span className="text-xs font-bold text-slate-800 block">{d.day}</span>
                   <div className="text-xs font-semibold text-emerald-700">{d.temp}</div>

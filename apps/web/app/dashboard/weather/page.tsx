@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import api from "../../../lib/api";
 import { useAuthStore } from "../../../store/authStore";
+import { WeatherProvenance } from "../../../components/modules/WeatherModule";
 import { 
   ArrowLeft, 
   CloudSun, 
@@ -154,6 +155,7 @@ export default function WeatherPage() {
         ) : data ? (
           <div className="space-y-6">
             {/* Upper Grid */}
+            <WeatherProvenance data={data} />
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
               
               {/* Primary Current Card */}
@@ -178,7 +180,7 @@ export default function WeatherPage() {
 
                 <div className="text-[11px] text-slate-400 mt-6 flex items-center gap-1.5">
                   <span className="h-2 w-2 bg-emerald-500 rounded-full"></span>
-                  Real-time telemetry feed active
+                  {(data as any).source === "demo" ? "Simulated fallback (Open-Meteo unreachable)" : "Live Open-Meteo feed"}
                 </div>
               </div>
 

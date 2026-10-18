@@ -188,7 +188,9 @@ def get_state_weather_fallback(state: str) -> Dict[str, Any]:
         "rain_chance": rain_chance,
         "forecast": forecast,
         "alerts": alerts,
-        "advisories": advisories
+        "advisories": advisories,
+        "source": "demo",
+        "source_note": "Simulated values: Open-Meteo was unreachable.",
     }
 
 def get_state_weather(
@@ -201,7 +203,8 @@ def get_state_weather(
     Falls back to state centroid coordinates or simulated fallbacks upon failures.
     """
     normalized_state = state.strip().title() if state else "General"
-    
+    location_basis = "provided coordinates" if (lat is not None and lon is not None) else "state centroid"
+
     # 1. Resolve coordinates if not provided
     if lat is None or lon is None:
         if normalized_state in STATE_COORDINATES:
@@ -343,7 +346,12 @@ def get_state_weather(
             "rain_chance": rain_chance,
             "forecast": forecast,
             "alerts": alerts,
-            "advisories": advisories
+            "advisories": advisories,
+            "source": "open-meteo",
+            "location_basis": location_basis,
+            "lat": lat,
+            "lon": lon,
+            "fetched_at": datetime.utcnow().isoformat() + "Z",
         }
     except Exception as e:
         logger.warning(f"Error querying Open-Meteo: {e}. Falling back to simulated weather.")

@@ -41,7 +41,7 @@ from app.models.expense import Expense # For schema bootstrapping
 from app.models.mandi import MandiListing # For schema bootstrapping
 from app.models.farm import Farm, SoilReport # For schema bootstrapping
 from app.models.satellite import SatelliteObservation, EarthIntelligenceForecast # For schema bootstrapping
-from app.models.vegetation import VegetationIndexObservation # For schema bootstrapping
+from app.models.vegetation import VegetationIndexObservation, WeatherIndexSnapshot # For schema bootstrapping
 
 # Create database tables if they don't exist yet (automatic bootstrapping for dev)
 try:

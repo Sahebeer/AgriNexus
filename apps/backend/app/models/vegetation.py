@@ -36,3 +36,15 @@ class VegetationIndexObservation(Base):
     source = Column(String, nullable=False, default="element84-earth-search/sentinel-2-l2a")
     error = Column(String, nullable=True)
     fetched_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class WeatherIndexSnapshot(Base):
+    """Cached Open-Meteo agro-weather indices (GDD, water balance, drought) per rounded point."""
+    __tablename__ = "weather_index_snapshots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    lat = Column(Float, nullable=False, index=True)
+    lon = Column(Float, nullable=False, index=True)
+    sowing_key = Column(String, nullable=False, default="")
+    payload = Column(String, nullable=False)          # JSON with values + provenance
+    fetched_at = Column(DateTime(timezone=True), server_default=func.now())
