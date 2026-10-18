@@ -251,7 +251,20 @@ def post_chat_message(
 
     # Combine UI context with database resolved logs
     enriched_context = message_in.farmer_context or {}
+    # Real-data field alerts (cache only, no network) so the advisor can cite evidence
+    field_alerts = []
+    try:
+        from app.services.realdata.alerts import alerts_from_cache
+        for f in farms:
+            res = alerts_from_cache(db, f)
+            if res and res["alerts"]:
+                for a in res["alerts"]:
+                    field_alerts.append({**a, "field_name": f.name})
+    except Exception:
+        pass
+
     enriched_context.update({
+        "field_alerts": field_alerts,
         "farms": farms_list,
         "sar_intelligence": list(sar_map.values()),
         "scans": scans_list,

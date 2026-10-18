@@ -468,3 +468,24 @@ async def upload_farm_boundary(
         "features": [{k: v for k, v in f.items() if k != "geometry"} for f in parsed["features"]],
         "skipped": parsed["skipped"],
     }
+
+
+@router.get("/{farm_id}/alerts")
+def get_farm_alerts(
+    farm_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """NDVI-drop, low-NDVI and drought alerts with evidence, computed from real data."""
+    from app.services.realdata.agro_weather import get_agro_indices
+    from app.services.realdata.alerts import evaluate_alerts
+    from app.services.realdata.geometry import centroid_latlon
+    from app.services.realdata.sentinel2 import get_vegetation_series
+    farm, geom = _owned_farm_geometry(db, farm_id, current_user)
+    series = get_vegetation_series(geom, db=db, farm_id=farm.id)
+    lat, lon = centroid_latlon(geom)
+    agri = get_agro_indices(lat, lon, sowing_date=farm.sowing_date, db=db)
+    result = evaluate_alerts(farm.id, series["observations"],
+                             agri if agri.get("source") != "unavailable" else None, farm.sowing_date)
+    result["inputs"] = {"vegetation_status": series["status"], "weather_source": agri.get("source")}
+    return result

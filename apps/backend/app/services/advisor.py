@@ -277,6 +277,19 @@ def generate_advisor_response(
                 sar_items.append(item_desc)
             context_bulletpoints.append(f"- Sentinel-1 SAR Radar Telemetry (Earth Observation): {'; '.join(sar_items)}")
 
+    # Ingest real-data field alerts (Sentinel-2 NDVI / Open-Meteo drought) with evidence
+    if farmer_context and farmer_context.get("field_alerts"):
+        alert_lines = []
+        for a in farmer_context["field_alerts"][:5]:
+            alert_lines.append(
+                f"{a.get('field_name', 'Field')}: {a.get('title')} (confidence {a.get('confidence')}, heuristic). "
+                f"Evidence: {a.get('evidence_text')} Suggested action: {a.get('recommended_action')}"
+            )
+        context_bulletpoints.append(
+            "- Field Alerts from real satellite/weather data (cite the evidence, dates and scene ids when relevant): "
+            + " | ".join(alert_lines)
+        )
+
     # Ingest Weather Context
     if farmer_context and "weather" in farmer_context:
         w = farmer_context["weather"]
