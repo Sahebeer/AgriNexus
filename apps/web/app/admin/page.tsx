@@ -47,18 +47,13 @@ interface SystemStatus {
 }
 
 interface DemoFarmPreset {
-  farm_id: string;
+  farm_id: number;
   name: string;
   location: string;
   crop: string;
-  crop_confidence?: number;
   area_hectares: number;
-  area_acres: number;
-  health_score: number;
-  health_status: string;
-  ndvi_mean: number;
-  moisture_index: number;
-  satellite_source: string;
+  health_score: number | null;
+  ndvi_mean: number | null;
   is_demo: boolean;
 }
 
@@ -301,7 +296,7 @@ export default function AdminDashboardPage() {
     try {
       const res = await api.post("/api/v1/advisor/chat", {
         message: promptText
-      });
+      }, { timeout: 60000 });
       setAdvisorResponse(res.data.response);
       showToast("Agronomist response generated", "success");
     } catch (err: any) {
@@ -566,15 +561,18 @@ export default function AdminDashboardPage() {
               <div>
                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                   <Satellite className="h-5 w-5 text-blue-600" />
-                  Curated Regional Farm Telemetry Presets (India)
+                  My Farms
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Synthetic multi-spectral Sentinel-2 and microwave Sentinel-1 radar telemetry across key agro-climatic zones.
+                  Farms registered to this admin account. Health and NDVI come from the latest stored Sentinel-2 observation.
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {demoFarms.length === 0 && (
+                <p className="text-sm text-slate-500">No farms on this account yet. Add one from the Profile page.</p>
+              )}
               {demoFarms.map((farm) => (
                 <div
                   key={farm.farm_id}
@@ -602,11 +600,11 @@ export default function AdminDashboardPage() {
                     </div>
                     <div className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm">
                       <div className="text-[10px] text-slate-400 uppercase font-semibold">Health</div>
-                      <div className="font-bold text-emerald-700">{farm.health_score}%</div>
+                      <div className="font-bold text-emerald-700">{farm.health_score != null ? `${farm.health_score}%` : "—"}</div>
                     </div>
                     <div className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm">
                       <div className="text-[10px] text-slate-400 uppercase font-semibold">NDVI Index</div>
-                      <div className="font-bold text-blue-700">{farm.ndvi_mean}</div>
+                      <div className="font-bold text-blue-700">{farm.ndvi_mean ?? "—"}</div>
                     </div>
                   </div>
 

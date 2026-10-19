@@ -8,7 +8,7 @@ from typing import Optional, List, Dict, Any
 logger = logging.getLogger(__name__)
 
 # Attempt to configure the official google-generativeai package if key is provided
-GEMINI_KEY = os.getenv("GEMINI_API_KEY")
+from app.core.gemini import GEMINI_API_KEY as GEMINI_KEY, resolve_gemini_model
 GENAI_AVAILABLE = False
 
 if GEMINI_KEY:
@@ -233,7 +233,14 @@ def generate_advisor_response(
 
                 irrigation = f.get("irrigation_method", "Unknown irrigation")
                 crop = f.get("current_crop") or f.get("crop", "Unknown")
-                desc = f"{name} ({area} Ha, Crop: {crop}, soil texture: {soil}, water: {irrigation})"
+                farm_loc_parts = [p for p in [f.get("village"), f.get("district"), f.get("state")] if p]
+                loc_str = f" [Location: {', '.join(farm_loc_parts)}" if farm_loc_parts else ""
+                if f.get("gps_coordinates"):
+                    loc_str += f" (GPS: {f.get('gps_coordinates')})]" if loc_str else f" [GPS: {f.get('gps_coordinates')}]"
+                elif loc_str:
+                    loc_str += "]"
+
+                desc = f"{name}{loc_str} ({area} Ha, Crop: {crop}, soil texture: {soil}, water: {irrigation})"
 
                 # Soil report
                 sh = f.get("soil_health")
@@ -334,7 +341,7 @@ def generate_advisor_response(
     # 4. Execute real Gemini query if available
     if GENAI_AVAILABLE:
         try:
-            model = genai.GenerativeModel("gemini-1.5-flash")
+            model = genai.GenerativeModel(resolve_gemini_model())
 
             # Format multi-turn history for Gemini chat structure
             formatted_history = []

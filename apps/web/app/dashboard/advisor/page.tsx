@@ -176,7 +176,7 @@ export default function AdvisorChatPage() {
           weather: weatherData,
           prices: marketPrices
         }
-      });
+      }, { timeout: 60000 });
 
       const aiResponse = res.data;
       if (!activeSessionId) {
@@ -330,10 +330,13 @@ export default function AdvisorChatPage() {
                 </div>
               ) : (
                 sessions.map((s) => (
-                  <button
+                  <div
                     key={s.session_id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setActiveSessionId(s.session_id)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all border text-left group ${
+                    onKeyDown={(e) => { if (e.key === "Enter") setActiveSessionId(s.session_id); }}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all border text-left cursor-pointer group ${
                       activeSessionId === s.session_id
                         ? "bg-emerald-50 border-emerald-200 text-emerald-900 font-semibold shadow-sm"
                         : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50"
@@ -344,13 +347,14 @@ export default function AdvisorChatPage() {
                       <span className="text-xs truncate">{s.session_title}</span>
                     </div>
                     <button 
+                      type="button"
                       onClick={(e) => handleDeleteSession(e, s.session_id)}
                       className="opacity-0 group-hover:opacity-100 hover:text-rose-600 p-1 rounded transition-all text-slate-400"
                       title="Delete thread"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
-                  </button>
+                  </div>
                 ))
               )}
             </div>

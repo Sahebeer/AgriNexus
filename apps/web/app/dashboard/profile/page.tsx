@@ -4,11 +4,14 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import api from "../../../lib/api";
 import FieldRealDataPanel from "../../../components/farm/FieldRealDataPanel";
+import CropTypeSelector from "../../../components/common/CropTypeSelector";
+import { getCropTypeLabel } from "../../../lib/cropTypes";
 import { useAuthStore } from "../../../store/authStore";
 import { useToastStore } from "../../../store/toastStore";
 import {
   ArrowLeft,
   User,
+  Mail,
   Settings,
   Map,
   MapPin,
@@ -64,6 +67,7 @@ interface FarmField {
   village: string;
   gps_coordinates: string;
   current_crop: string;
+  crop_type_id?: string | null;
   sowing_date: string;
   irrigation_method: string;
   boundary_geojson?: string | null;
@@ -142,6 +146,7 @@ export default function ProfilePage() {
   const [newFarmVillage, setNewFarmVillage] = useState("");
   const [newGPS, setNewGPS] = useState("");
   const [newCrop, setNewCrop] = useState("Rice");
+  const [newCropTypeId, setNewCropTypeId] = useState<string | null>(null);
   const [newSowDate, setNewSowDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [newIrrigation, setNewIrrigation] = useState("Drip Irrigation");
   const [isSubmittingFarm, setIsSubmittingFarm] = useState(false);
@@ -163,12 +168,14 @@ export default function ProfilePage() {
   const [isSubmittingSoil, setIsSubmittingSoil] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (!user) {
+      checkAuth();
+    } else {
       setFullName(user.full_name || "");
       setPhoneNumber(user.phone_number || "");
       setLocationState(user.state || "");
     }
-  }, [user]);
+  }, [user, checkAuth]);
 
   const fetchFarms = async () => {
     setIsLoadingFarms(true);
@@ -263,6 +270,7 @@ export default function ProfilePage() {
         village: newFarmVillage,
         gps_coordinates: newGPS || undefined,
         current_crop: newCrop,
+        crop_type_id: newCropTypeId,
         sowing_date: newSowDate,
         irrigation_method: newIrrigation,
       });
@@ -339,6 +347,15 @@ export default function ProfilePage() {
               Farmer & Farm Console
             </h1>
           </div>
+          {user?.email && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-700 font-semibold shadow-2xs">
+              <Mail className="h-3.5 w-3.5 text-emerald-600" />
+              <span>{user.email}</span>
+              <span className="uppercase text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold tracking-wider">
+                {user.role}
+              </span>
+            </div>
+          )}
         </div>
       </header>
 
@@ -381,6 +398,26 @@ export default function ProfilePage() {
             </div>
 
             <form onSubmit={handleUpdateProfile} className="space-y-6">
+              {/* Email Address (Primary Identity) */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <input
+                    type="email"
+                    value={user?.email || ""}
+                    disabled
+                    readOnly
+                    className="w-full bg-slate-100 border border-slate-200 text-slate-600 rounded-xl py-3 pl-12 pr-4 text-sm font-semibold outline-none cursor-not-allowed select-all"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Registered account email and primary login ID (read-only).
+                </p>
+              </div>
+
               <div>
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Full Name</label>
                 <div className="relative">
@@ -496,7 +533,10 @@ export default function ProfilePage() {
                       }`}
                     >
                       <span className="font-bold text-sm text-slate-900 truncate w-full">{f.name}</span>
-                      <span className="text-xs text-slate-500 font-medium">{f.area} Ha · {f.current_crop}</span>
+                      <span className="text-xs text-slate-500 font-medium">
+                        {f.area} Ha · {f.current_crop}
+                        {getCropTypeLabel(f.current_crop, f.crop_type_id) ? ` (${getCropTypeLabel(f.current_crop, f.crop_type_id)})` : ""}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -513,6 +553,9 @@ export default function ProfilePage() {
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full uppercase">
                           {activeFarm.current_crop}
+                          {getCropTypeLabel(activeFarm.current_crop, activeFarm.crop_type_id)
+                            ? ` • ${getCropTypeLabel(activeFarm.current_crop, activeFarm.crop_type_id)}`
+                            : ""}
                         </span>
                         {activeLatestReport && (
                           <span className="text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full">
@@ -1172,7 +1215,10 @@ export default function ProfilePage() {
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">Current Crop *</label>
                     <select
                       value={newCrop}
-                      onChange={e => setNewCrop(e.target.value)}
+                      onChange={e => {
+                        setNewCrop(e.target.value);
+                        setNewCropTypeId(null);
+                      }}
                       className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-4 py-2.5 text-slate-900 text-xs outline-none transition-colors font-semibold"
                     >
                       {CROPS.map(c => <option key={c} value={c}>{c}</option>)}
@@ -1189,6 +1235,14 @@ export default function ProfilePage() {
                     />
                   </div>
                 </div>
+
+                {/* Conditional Crop Type Selector */}
+                <CropTypeSelector
+                  crop={newCrop}
+                  value={newCropTypeId}
+                  onChange={setNewCropTypeId}
+                  id="dashboard-farm-crop-type-select"
+                />
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>

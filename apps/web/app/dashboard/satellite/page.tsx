@@ -99,6 +99,24 @@ interface SARHistoryItem {
   confidence: number;
 }
 
+// [[south, west], [north, east]] of a GeoJSON boundary string or a [lon, lat] ring.
+function boundsOf(boundary: any): [[number, number], [number, number]] | null {
+  try {
+    let g = typeof boundary === "string" ? JSON.parse(boundary) : boundary;
+    if (g?.type === "FeatureCollection") g = g.features?.[0]?.geometry;
+    if (g?.type === "Feature") g = g.geometry;
+    const pts: number[][] = Array.isArray(g)
+      ? g
+      : g?.type === "Polygon" ? g.coordinates.flat() : g?.type === "MultiPolygon" ? g.coordinates.flat(2) : [];
+    if (pts.length < 3) return null;
+    const lons = pts.map((p) => p[0]);
+    const lats = pts.map((p) => p[1]);
+    return [[Math.min(...lats), Math.min(...lons)], [Math.max(...lats), Math.max(...lons)]];
+  } catch {
+    return null;
+  }
+}
+
 export default function SatellitePage() {
   const { user } = useAuthStore();
   const { showToast } = useToastStore();
@@ -112,8 +130,8 @@ export default function SatellitePage() {
   const [showZones, setShowZones] = useState<boolean>(true);
 
   // Geographic coordinates & zoom
-  const [mapCenter, setMapCenter] = useState<[number, number]>([20.0788, 74.1115]); // Default: Niphad Agro Belt, Maharashtra
-  const [mapZoom, setMapZoom] = useState<number>(15);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([22.5, 79.0]); // India overview until a farm loads
+  const [mapZoom, setMapZoom] = useState<number>(5);
 
   // Boundary Drawing State
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
@@ -129,53 +147,65 @@ export default function SatellitePage() {
   // SAR Radar State
   const [farms, setFarms] = useState<FarmField[]>([]);
   const [selectedFarmId, setSelectedFarmId] = useState<number | null>(null);
+  const [farmsLoaded, setFarmsLoaded] = useState<boolean>(false);
+  const [farmError, setFarmError] = useState<string | null>(null);
+  const [isSavingBoundary, setIsSavingBoundary] = useState<boolean>(false);
+  const [focusBounds, setFocusBounds] = useState<{ bounds: [[number, number], [number, number]]; key: number } | null>(null);
+  const focusOn = (boundary: any) => {
+    const b = boundsOf(boundary);
+    if (b) setFocusBounds({ bounds: b, key: Date.now() });
+  };
   const [sarData, setSarData] = useState<SARDiagnostic | null>(null);
   const [sarHistory, setSarHistory] = useState<SARHistoryItem[]>([]);
   const [isSarLoading, setIsSarLoading] = useState<boolean>(false);
   const [sarError, setSarError] = useState<string | null>(null);
 
-  const loadFlagshipDemoFarm = async () => {
+  // Satellite analysis of one of the signed-in user's own farms (server checks ownership).
+  const loadFarmAnalysis = async (farmId: number) => {
+    focusOn((farms.find((f: any) => f.id === farmId) as any)?.boundary_geojson);
     setIsMapLoading(true);
+    setFarmError(null);
     try {
-      const res = await api.get("/api/v1/satellite-maps/demo-farm", { timeout: 150000 });
+      const res = await api.get(`/api/v1/satellite-maps/farms/${farmId}`, { timeout: 150000 });
       setFarmData(res.data);
-      if (res.data.center) {
-        setMapCenter([res.data.center[0], res.data.center[1]]);
-        setMapZoom(15);
-      }
+      if (res.data.boundary) focusOn(res.data.boundary);
       setCustomPolygon(null);
       setDrawnVertices([]);
       setIsDrawing(false);
-      showToast(`Demo farm loaded (${res.data.area_hectares} ha, ${res.data.is_demo ? "demo NDVI" : "Sentinel-2 NDVI"})`, "success");
-    } catch (err) {
-      console.error("Failed to load demo farm:", err);
-      showToast("Notice: Loaded local agricultural fallback telemetry.", "info");
+      showToast(`${res.data.name} loaded (${res.data.area_hectares} ha, ${res.data.is_demo ? "demo NDVI" : "Sentinel-2 NDVI"})`, "success");
+    } catch (err: any) {
+      console.error("Failed to load farm analysis:", err);
+      setFarmData(null);
+      const detail = err.response?.data?.detail;
+      setFarmError(typeof detail === "string" ? detail : "Could not load satellite analysis for this farm.");
     } finally {
       setIsMapLoading(false);
     }
   };
 
-  // 1. Initial Load: Flagship Rural India Demo Farm
-  useEffect(() => {
-    loadFlagshipDemoFarm();
-  }, []);
-
-  // 2. Load User Farms for SAR Radar View
+  // 1. Load the user's own farms (no demo/fallback farm is ever shown)
   useEffect(() => {
     const fetchFarms = async () => {
       try {
         const res = await api.get("/api/v1/farms/");
         const farmList = res.data || [];
         setFarms(farmList);
-        if (farmList.length > 0) {
-          setSelectedFarmId(farmList[0].id);
-        }
+        setSelectedFarmId(farmList.length > 0 ? farmList[0].id : null);
+        if (farmList.length === 0) setFarmData(null);
       } catch (err) {
         console.error("Failed to load user farms:", err);
+        setFarms([]);
+      } finally {
+        setFarmsLoaded(true);
       }
     };
     fetchFarms();
   }, [user]);
+
+  // 2. Load map analysis for the selected farm
+  useEffect(() => {
+    if (selectedFarmId) loadFarmAnalysis(selectedFarmId);
+  }, [selectedFarmId]);
 
   // 3. Load SAR Telemetry
   useEffect(() => {
@@ -220,9 +250,7 @@ export default function SatellitePage() {
           showToast(`Located position: ${lat.toFixed(4)}, ${lon.toFixed(4)}`, "success");
         },
         (err) => {
-          showToast("Geolocation unavailable or denied. Centering on demo farm.", "info");
-          setMapCenter([20.0788, 74.1115]);
-          setMapZoom(15);
+          showToast("Geolocation unavailable or denied.", "info");
         }
       );
     } else {
@@ -275,7 +303,7 @@ export default function SatellitePage() {
       const res = await api.post("/api/v1/satellite-maps/analyze-boundary", {
         boundary: geoJsonCoords,
         crop: "Wheat",
-        farm_name: "Custom Precision Farm"
+        farm_name: "Drawn Boundary (unsaved)"
       }, { timeout: 150000 });
       setFarmData(res.data);
       showToast(`Analyzed ${res.data.area_hectares} ha (${res.data.area_acres} acres) with AI Reasoning!`, "success");
@@ -287,11 +315,39 @@ export default function SatellitePage() {
     }
   };
 
+  // Save the drawn polygon as the selected farm's boundary (reuses the KML/GeoJSON upload API).
+  const saveBoundaryToFarm = async () => {
+    if (!customPolygon || !selectedFarmId) return;
+    const farm = farms.find((f: any) => f.id === selectedFarmId) as any;
+    const geojson = {
+      type: "Feature",
+      properties: { name: farm?.name || "Drawn boundary" },
+      geometry: { type: "Polygon", coordinates: [customPolygon.map((p) => [p[1], p[0]])] },
+    };
+    const form = new FormData();
+    form.append("file", new Blob([JSON.stringify(geojson)], { type: "application/geo+json" }), "boundary.geojson");
+    setIsSavingBoundary(true);
+    try {
+      const res = await api.post(`/api/v1/farms/${selectedFarmId}/boundary`, form, {
+        timeout: 60000,
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      showToast(`Boundary saved to ${farm?.name || "farm"} (${res.data.area?.hectares} ha)`, "success");
+      await loadFarmAnalysis(selectedFarmId);
+    } catch (err: any) {
+      const detail = err.response?.data?.detail;
+      showToast(typeof detail === "string" ? detail : "Could not save boundary.", "error");
+    } finally {
+      setIsSavingBoundary(false);
+    }
+  };
+
   const handleResetBoundary = () => {
     setDrawnVertices([]);
     setCustomPolygon(null);
     setIsDrawing(false);
-    loadFlagshipDemoFarm();
+    if (selectedFarmId) loadFarmAnalysis(selectedFarmId);
+    else setFarmData(null);
   };
 
   return (
@@ -370,7 +426,7 @@ export default function SatellitePage() {
                   onZoomIn={handleZoomIn}
                   onZoomOut={handleZoomOut}
                   onLocateMe={handleLocateMe}
-                  onExploreDemoFarm={loadFlagshipDemoFarm}
+                  onShowMyFarm={() => selectedFarmId && loadFarmAnalysis(selectedFarmId)}
                   onSearchLocation={handleSearchLocation}
                   isDrawing={isDrawing}
                   onToggleDrawing={handleToggleDrawing}
@@ -413,12 +469,47 @@ export default function SatellitePage() {
                 customPolygon={customPolygon}
                 center={mapCenter}
                 zoom={mapZoom}
+                focusBounds={focusBounds}
               />
             </div>
 
             {/* Right 4 Columns: Farm Intelligence & AI Reasoning Side Panel */}
             <div className="lg:col-span-4 w-full">
+              {farmsLoaded && farms.length === 0 ? (
+                <div className="mb-4 p-5 rounded-2xl border border-dashed border-slate-300 bg-white text-center space-y-2">
+                  <h3 className="text-sm font-bold text-slate-900">No farms on this account yet</h3>
+                  <p className="text-xs text-slate-500">
+                    Add a farm with its boundary on the Profile page (draw it or import a KML/GeoJSON file) to see its satellite analysis here.
+                  </p>
+                  <a href="/dashboard/profile" className="inline-block text-xs font-semibold text-emerald-700 hover:underline">Add a farm →</a>
+                </div>
+              ) : farms.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Farm</label>
+                  <select
+                    value={selectedFarmId ?? ""}
+                    onChange={(e) => setSelectedFarmId(Number(e.target.value))}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  >
+                    {farms.map((f: any) => (
+                      <option key={f.id} value={f.id}>{f.name}</option>
+                    ))}
+                  </select>
+                  {customPolygon && !isDrawing && (
+                    <button
+                      onClick={saveBoundaryToFarm}
+                      disabled={isSavingBoundary}
+                      className="mt-2 w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-xs font-bold py-2"
+                    >
+                      {isSavingBoundary
+                        ? "Saving boundary…"
+                        : `Save drawn boundary to ${(farms.find((f: any) => f.id === selectedFarmId) as any)?.name || "this farm"}`}
+                    </button>
+                  )}
+                </div>
+              )}
               <FarmAnalysisPanel
+                emptyMessage={farmError || (farmsLoaded && farms.length === 0 ? "No farms yet. Add one on the Profile page, or draw a boundary to try an analysis." : undefined)}
                 data={farmData}
                 isLoading={isMapLoading}
                 selectedZone={selectedZone}

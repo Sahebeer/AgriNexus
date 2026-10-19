@@ -4,7 +4,7 @@ from typing import List, Dict, Any
 
 logger = logging.getLogger(__name__)
 
-GEMINI_KEY = os.getenv("GEMINI_API_KEY")
+from app.core.gemini import GEMINI_API_KEY as GEMINI_KEY, resolve_gemini_model
 GENAI_AVAILABLE = False
 
 if GEMINI_KEY:
@@ -122,7 +122,7 @@ def analyze_expenses_with_ai(
     # 2. AI Execution using Gemini if enabled
     if GENAI_AVAILABLE:
         try:
-            model = genai.GenerativeModel("gemini-1.5-flash")
+            model = genai.GenerativeModel(resolve_gemini_model())
 
             prompt = (
                 f"You are AgriNexus AI, a farm economics expert. Analyze the following farm expenses and context. "

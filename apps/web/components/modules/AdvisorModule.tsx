@@ -151,7 +151,7 @@ export default function AdvisorModule({ onBack }: AdvisorModuleProps) {
         content: userText,
         message: userText,
         session_id: activeSessionId || undefined
-      });
+      }, { timeout: 60000 });
 
       const data = res.data;
       if (!activeSessionId && data.session_id) {

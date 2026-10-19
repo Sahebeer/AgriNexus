@@ -17,6 +17,7 @@ class CropCalendar(Base):
 
     name = Column(String, nullable=False)           # e.g. "Kharif Rice 2025 — Punjab"
     crop = Column(String, nullable=False)
+    crop_type_id = Column(String, nullable=True)
     variety = Column(String, nullable=True)
     location = Column(String, nullable=True)        # state / district
     sow_date = Column(Date, nullable=False)

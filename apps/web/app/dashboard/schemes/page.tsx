@@ -126,7 +126,8 @@ export default function SchemesPage() {
         crops: selectedCrops.length > 0 ? selectedCrops : undefined
       };
       const res = await api.post("/api/v1/schemes/recommend", payload);
-      setRecommendations(res.data.recommendations || []);
+      const list = Array.isArray(res.data) ? res.data : (res.data?.recommendations || res.data?.schemes || []);
+      setRecommendations(list);
     } catch (err: any) {
       setError("Failed to calculate scheme eligibility. Please check backend connection.");
     } finally {
@@ -143,7 +144,8 @@ export default function SchemesPage() {
           state: selectedState || undefined
         }
       });
-      setCatalog(res.data.schemes || []);
+      const list = Array.isArray(res.data) ? res.data : (res.data?.schemes || res.data?.recommendations || []);
+      setCatalog(list);
     } catch (err: any) {
       console.error(err);
     }

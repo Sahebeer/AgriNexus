@@ -241,6 +241,27 @@ def check_gps_state_match(lat: float, lon: float, state: str) -> bool:
     distance = ((lat - state_lat) ** 2 + (lon - state_lon) ** 2) ** 0.5
     return distance < 6.0
 
+def resolve_state_from_gps(lat: float, lon: float) -> Optional[str]:
+    """
+    Infers the Indian state from latitude and longitude by finding the nearest
+    state centroid in STATE_COORDINATES.
+    """
+    from app.services.weather import STATE_COORDINATES
+    if lat is None or lon is None:
+        return None
+    
+    best_state = None
+    min_dist = float("inf")
+    for state, (s_lat, s_lon) in STATE_COORDINATES.items():
+        dist = ((lat - s_lat) ** 2 + (lon - s_lon) ** 2) ** 0.5
+        if dist < min_dist:
+            min_dist = dist
+            best_state = state
+            
+    if min_dist < 7.0:
+        return best_state
+    return None
+
 def ingest_automated_farm_data(db: Session, farm_id: int) -> SatelliteObservation:
     """
     Core pipeline function:

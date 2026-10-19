@@ -108,17 +108,14 @@ def test_ai_farm_reasoning_and_efficiency():
 
 
 def test_demo_satellite_provider():
-    """Verify DemoSatelliteProvider returns full rural India dataset with all layers."""
+    """The synthetic provider analyses a supplied boundary; it has no built-in demo farm."""
     provider = DemoSatelliteProvider()
-    demo_farm = provider.get_demo_farm()
-    
-    assert demo_farm["farm_id"] == "DEMO-FARM-001"
-    assert demo_farm["area_hectares"] == 12.4
-    assert demo_farm["is_demo"] is True
-    assert "DEMO DATA" in demo_farm["satellite_source"]
-    assert len(demo_farm["zones"]) == 6
-    assert len(demo_farm["growth_history"]) == 8
-    assert len(demo_farm["barren_land"]) >= 3
+    assert not hasattr(provider, "get_demo_farm")
+    poly = [[74.1085, 20.0760], [74.1145, 20.0755], [74.1162, 20.0805], [74.1085, 20.0760]]
+    res = provider.get_farm_analysis(poly, crop="Wheat", farm_name="Field X")
+    assert res["name"] == "Field X" and res["is_demo"] is True
+    assert "DEMO DATA" in res["satellite_source"]
+    assert len(res["zones"]) == 6
 
 
 def test_admin_authentication_and_gating():

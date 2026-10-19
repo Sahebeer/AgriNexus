@@ -103,7 +103,9 @@ def parse_field_geometry(obj: Any) -> Union[Polygon, MultiPolygon]:
         raise GeometryError(f"Field is too small ({area_ha:.4f} ha). Minimum is {MIN_FIELD_AREA_HA} ha.")
     if area_ha > MAX_FIELD_AREA_HA:
         raise GeometryError(f"Field is too large ({area_ha:.0f} ha). Maximum is {MAX_FIELD_AREA_HA:.0f} ha.")
-    return geom
+    # Hand-drawn rings often repeat a vertex (e.g. clicking the start point to close);
+    # simplify(0) drops consecutive duplicates without moving any real vertex.
+    return geom.simplify(0, preserve_topology=True)
 
 
 def geodesic_area_ha(geom: BaseGeometry) -> float:

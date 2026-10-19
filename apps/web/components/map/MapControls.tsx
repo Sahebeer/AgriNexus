@@ -19,7 +19,8 @@ interface MapControlsProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onLocateMe: () => void;
-  onExploreDemoFarm: () => void;
+  onShowMyFarm?: () => void;
+  onExploreDemoFarm?: () => void;
   onSearchLocation: (locationName: string, lat: number, lon: number) => void;
   isDrawing: boolean;
   onToggleDrawing: () => void;
@@ -28,7 +29,7 @@ interface MapControlsProps {
 }
 
 const POPULAR_LOCATIONS = [
-  { name: "Niphad, Nashik (Demo Farm)", state: "Maharashtra", lat: 20.0788, lon: 74.1115 },
+  { name: "Niphad, Nashik", state: "Maharashtra", lat: 20.0788, lon: 74.1115 },
   { name: "Samrala, Ludhiana", state: "Punjab", lat: 30.8350, lon: 76.1920 },
   { name: "Hoshangabad (Narmadapuram)", state: "Madhya Pradesh", lat: 22.7510, lon: 77.7280 },
   { name: "Baramati, Pune", state: "Maharashtra", lat: 18.1520, lon: 74.5770 },
@@ -40,6 +41,7 @@ export default function MapControls({
   onZoomIn,
   onZoomOut,
   onLocateMe,
+  onShowMyFarm,
   onExploreDemoFarm,
   onSearchLocation,
   isDrawing,
@@ -113,16 +115,16 @@ export default function MapControls({
         )}
       </div>
 
-      {/* 2. Primary Action Bar: Demo Farm & Boundary Drawing */}
+      {/* 2. Primary Action Bar: My Farm & Boundary Drawing */}
       <div className="flex items-center gap-2">
-        {/* Explore Demo Farm Button */}
+        {/* Re-centre on the selected owned farm */}
         <button
-          onClick={onExploreDemoFarm}
+          onClick={onShowMyFarm || onExploreDemoFarm}
           className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-3.5 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-bold transition-all transform hover:scale-[1.02] active:scale-[0.98]"
-          title="Jump directly to the 12.4 ha Indian Demonstration Farm"
+          title="Reload the selected farm from your account"
         >
           <Sparkles className="h-3.5 w-3.5 text-amber-200" />
-          <span>Explore Demo Farm</span>
+          <span>My Farm</span>
         </button>
 
         {/* Draw / Edit Boundary Toggle */}

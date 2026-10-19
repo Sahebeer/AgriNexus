@@ -10,6 +10,7 @@ import os
 import json
 import re
 import logging
+import time
 from typing import Dict, Any, Optional
 from PIL import Image
 import io
@@ -27,7 +28,7 @@ SUPPORTED_CROP_HINTS = {
     "grape", "cotton", "soybean", "citrus", "cucumber", "strawberry", "coffee",
 }
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+from app.core.gemini import GEMINI_API_KEY, resolve_gemini_model
 GENAI_VISION_AVAILABLE = False
 
 if GEMINI_API_KEY:
@@ -88,7 +89,7 @@ def _analyze_with_gemini_vision(img_pil: Image.Image) -> Optional[Dict[str, Any]
 
     try:
         import google.generativeai as genai
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel(resolve_gemini_model())
 
         prompt = """
 You are an expert plant pathologist and agricultural computer vision system for AgriNexus AI.
@@ -129,7 +130,17 @@ If "is_crop" is false:
   "message": "No agricultural crop foliage detected in the image."
 }
 """
-        response = model.generate_content([prompt, img_pil])
+        # Google occasionally returns 504/429 under load: one retry with a time cap.
+        response = None
+        for attempt in range(2):
+            try:
+                response = model.generate_content([prompt, img_pil], request_options={"timeout": 25})
+                break
+            except Exception as call_exc:
+                logger.warning("Gemini Vision attempt %d failed: %s", attempt + 1, str(call_exc)[:200])
+                if attempt == 1:
+                    raise
+                time.sleep(1.5)
         text = response.text.strip()
         # Strip code block wrappers if any
         if text.startswith("```"):
@@ -193,7 +204,38 @@ If "is_crop" is false:
         return None
 
 
+# ConvNeXt results below this confidence get a Gemini second opinion (when a key is set).
+GEMINI_VERIFY_BELOW = 0.95
+# Below this, ConvNeXt alone never reports a diagnosis; it says "uncertain" instead.
+MIN_DIAGNOSIS_CONFIDENCE = 0.30
+
+_CROP_ALIASES = {"maize": "corn", "cornmaize": "corn", "bellpepper": "pepper", "pepperbell": "pepper"}
+
+
+def _norm_crop(name: Optional[str]) -> str:
+    key = re.sub(r"[^a-z]", "", (name or "").lower())
+    return _CROP_ALIASES.get(key, key)
+
+
+def _same_disease(a: Optional[str], b: Optional[str]) -> bool:
+    x = re.sub(r"[^a-z]", "", (a or "healthy").lower())
+    y = re.sub(r"[^a-z]", "", (b or "healthy").lower())
+    if "healthy" in (x, y):
+        return x == y
+    return x in y or y in x
+
+
 def analyze_crop_image(image_bytes: bytes, crop_hint: Optional[str] = None) -> Dict[str, Any]:
+    """Public entry point. The current "Grad-CAM" overlay is a fixed placeholder square,
+    not real model attention, so it is withheld until real Grad-CAM is implemented.
+    The UI only shows the heatmap toggle when an overlay is present."""
+    result = _analyze_crop_image(image_bytes, crop_hint)
+    if isinstance(result, dict) and "gradcam_overlay" in result:
+        result["gradcam_overlay"] = None
+    return result
+
+
+def _analyze_crop_image(image_bytes: bytes, crop_hint: Optional[str] = None) -> Dict[str, Any]:
     """
     Unified entry point for agricultural crop and disease visual diagnosis.
     Guarantees that non-crop images (vehicles, humans, electronics, random scenery)
@@ -268,14 +310,63 @@ def analyze_crop_image(image_bytes: bytes, crop_hint: Optional[str] = None) -> D
                 _MONOCOT_CROPS = {"corn", "corn_maize", "maize", "wheat"}
                 _monocot_triggered = _monocot_ambiguous or (_pred_crop in _MONOCOT_CROPS and _pred_conf < 0.90)
 
-                if _monocot_triggered and GENAI_VISION_AVAILABLE:
-                    logger.info(
-                        "Monocot guard: routing %s (%.2f) to Gemini Vision.", _pred_crop, _pred_conf
-                    )
+                # ── Gemini second opinion ────────────────────────────────────
+                # ConvNeXt can be confidently wrong on photos unlike PlantVillage
+                # (e.g. a garden photo -> "Tomato Late Blight 85%"). Below
+                # GEMINI_VERIFY_BELOW we ask Gemini; if it disagrees on crop or
+                # disease, or says it's not a crop, Gemini's answer wins.
+                verified_by_gemini = False
+                gemini_alternative = None
+                if GENAI_VISION_AVAILABLE and (_monocot_triggered or _pred_conf < GEMINI_VERIFY_BELOW):
+                    logger.info("Routing %s (%.2f) to Gemini Vision for a second opinion.", _pred_crop, _pred_conf)
                     gemini_result = _analyze_with_gemini_vision(img_pil)
-                    if gemini_result is not None and gemini_result.get("status") not in ("crop_not_detected",):
-                        gemini_result["source"] = "gemini_multimodal_vision"
-                        return gemini_result
+                    if gemini_result is not None:
+                        convnext_opinion = {
+                            "crop": res.get("crop"), "disease": res.get("disease"),
+                            "confidence": round(_pred_conf, 4), "source": "convnext_deep_learning",
+                        }
+                        if gemini_result.get("status") == "crop_not_detected":
+                            gemini_result["second_opinion"] = convnext_opinion
+                            return gemini_result
+                        same_crop = _norm_crop(gemini_result.get("crop")) == _norm_crop(res.get("crop"))
+                        same_disease = _same_disease(gemini_result.get("disease"), res.get("disease"))
+                        weak = _pred_conf < MIN_DIAGNOSIS_CONFIDENCE
+                        # Gemini decides WHAT plant it is; ConvNeXt (trained on these exact
+                        # diseases) keeps the disease call unless it is too weak to trust.
+                        if _monocot_triggered or not same_crop or (weak and not same_disease):
+                            gemini_result["source"] = "gemini_multimodal_vision"
+                            gemini_result["second_opinion"] = convnext_opinion
+                            return gemini_result
+                        if same_disease and weak:
+                            # Both agree but ConvNeXt's own score is low: report Gemini's confidence.
+                            gemini_result["source"] = "gemini_multimodal_vision"
+                            gemini_result["verified_by_convnext"] = True
+                            gemini_result["second_opinion"] = convnext_opinion
+                            return gemini_result
+                        verified_by_gemini = same_disease
+                        if not same_disease:
+                            gemini_alternative = {
+                                "disease": gemini_result.get("disease"),
+                                "disease_name": gemini_result.get("disease_name"),
+                                "confidence": gemini_result.get("disease_confidence"),
+                            }
+
+                # Weak predictions must not be presented as a diagnosis.
+                if _pred_conf < MIN_DIAGNOSIS_CONFIDENCE and not verified_by_gemini:
+                    return {
+                        "status": "uncertain",
+                        "error_code": "LOW_CONFIDENCE",
+                        "crop": (res.get("crop") or "Vegetation").replace("_", " ").title(),
+                        "crop_confidence": round(_pred_conf, 4),
+                        "disease": None,
+                        "disease_name": "Uncertain Foliar Pattern",
+                        "disease_confidence": round(_pred_conf, 4),
+                        "supported": True,
+                        "top3_predictions": res.get("top3_predictions") or [],
+                        "message": (f"Not confident enough to diagnose ({int(_pred_conf * 100)}%). "
+                                    "Please upload a closer, well-lit photo of a single affected leaf."),
+                        "source": "convnext_deep_learning",
+                    }
 
 
                 # ── Successful Agricultural Crop Disease Diagnosis ──
@@ -302,6 +393,13 @@ def analyze_crop_image(image_bytes: bytes, crop_hint: Optional[str] = None) -> D
                 mask[16:48, 16:48] = 0.85
                 gradcam = generate_symptom_heatmap(img_pil, mask)
 
+                if gemini_alternative is not None:
+                    alt = gemini_alternative.get("disease_name") or gemini_alternative.get("disease")
+                    message_suffix = f" Gemini Vision suggests {alt} as an alternative; confirm in the field."
+                elif verified_by_gemini:
+                    message_suffix = " Confirmed by Gemini Vision."
+                else:
+                    message_suffix = ""
                 if status == "healthy":
                     message = f"Foliage healthy: {disease_name} ({int(conf * 100)}% confidence)."
                 elif conf >= 0.60:
@@ -322,6 +420,7 @@ def analyze_crop_image(image_bytes: bytes, crop_hint: Optional[str] = None) -> D
                     else:
                         treat = "Chemical: Apply broad-spectrum fungicide Mancozeb (2.5 g/L) or Chlorothalonil (2 g/L) or Azoxystrobin (1 ml/L). Organic: Spray cold-pressed Neem oil (5 ml/L) or Trichoderma viride."
 
+                message += message_suffix
                 prevent = meta.get("prevention") or "Ensure adequate crop spacing (>50 cm) for airflow, avoid overhead sprinkler wetting, and destroy crop residues after harvest."
 
                 top3 = res.get("top3_predictions") or [
@@ -344,7 +443,9 @@ def analyze_crop_image(image_bytes: bytes, crop_hint: Optional[str] = None) -> D
                     "prevention": prevent,
                     "gradcam_overlay": gradcam,
                     "top3_predictions": top3,
-                    "source": "convnext_deep_learning"
+                    "source": "convnext_deep_learning",
+                    "verified_by_gemini": verified_by_gemini,
+                    "gemini_alternative": gemini_alternative,
                 }
         except Exception as exc:
             logger.warning(f"ConvNeXt inference failed: {exc}. Falling back to secondary pipeline.")

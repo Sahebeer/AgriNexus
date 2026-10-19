@@ -24,11 +24,14 @@ import {
   Briefcase,
   AlertTriangle,
 } from "lucide-react";
+import CropTypeSelector from "../../../components/common/CropTypeSelector";
+import { getCropTypeLabel } from "../../../lib/cropTypes";
 
 interface Listing {
   id: number;
   user_id: number;
   crop: string;
+  crop_type_id?: string | null;
   quantity: number;
   unit: string;
   price_per_unit: number;
@@ -111,6 +114,7 @@ export default function MandiMarketplacePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newType, setNewType] = useState("seller");
   const [newCrop, setNewCrop] = useState("Wheat");
+  const [newCropTypeId, setNewCropTypeId] = useState<string | null>(null);
   const [newQty, setNewQty] = useState("");
   const [newUnit, setNewUnit] = useState("qtl");
   const [newPrice, setNewPrice] = useState("");
@@ -196,6 +200,7 @@ export default function MandiMarketplacePage() {
     try {
       await api.post("/api/v1/mandi/listings", {
         crop: newCrop,
+        crop_type_id: newCropTypeId || undefined,
         quantity: parseFloat(newQty),
         unit: newUnit,
         price_per_unit: parseFloat(newPrice),
@@ -206,6 +211,7 @@ export default function MandiMarketplacePage() {
       });
       showToast("Marketplace listing posted!", "success");
       setIsModalOpen(false);
+      setNewCropTypeId(null);
       setNewQty("");
       setNewPrice("");
       setNewDesc("");
@@ -351,7 +357,14 @@ export default function MandiMarketplacePage() {
                     {myListings.map(l => (
                       <div key={l.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
                         <div className="flex justify-between items-center text-xs font-semibold">
-                          <span className="text-slate-900 truncate max-w-[120px]">{l.crop}</span>
+                          <div className="flex items-center gap-1.5 truncate max-w-[140px]">
+                            <span className="text-slate-900 truncate">{l.crop}</span>
+                            {l.crop_type_id && (
+                              <span className="text-[9px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.2 rounded-full shrink-0">
+                                {getCropTypeLabel(l.crop, l.crop_type_id)}
+                              </span>
+                            )}
+                          </div>
                           <span className={l.status === "active" ? "text-emerald-700 font-bold" : "text-slate-400"}>
                             {l.status}
                           </span>
@@ -413,7 +426,14 @@ export default function MandiMarketplacePage() {
                         </div>
 
                         <div>
-                          <h3 className="text-base font-bold text-slate-900 mb-0.5">{l.crop}</h3>
+                          <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                            <h3 className="text-base font-bold text-slate-900">{l.crop}</h3>
+                            {l.crop_type_id && (
+                              <span className="text-[10px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full">
+                                {getCropTypeLabel(l.crop, l.crop_type_id)}
+                              </span>
+                            )}
+                          </div>
                           <div className="text-sm font-bold text-emerald-700">
                             ₹{l.price_per_unit.toLocaleString("en-IN")}/{l.unit}
                           </div>
@@ -623,13 +643,20 @@ export default function MandiMarketplacePage() {
                     <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Crop</label>
                     <select
                       value={newCrop}
-                      onChange={e => setNewCrop(e.target.value)}
+                      onChange={e => { setNewCrop(e.target.value); setNewCropTypeId(null); }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs outline-none focus:bg-white focus:border-emerald-600 transition-colors"
                     >
                       {CROPS.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                 </div>
+
+                <CropTypeSelector
+                  crop={newCrop}
+                  value={newCropTypeId}
+                  onChange={setNewCropTypeId}
+                  id="dashboard-mandi-crop-type"
+                />
 
                 <div className="grid grid-cols-3 gap-3">
                   <div className="col-span-2">

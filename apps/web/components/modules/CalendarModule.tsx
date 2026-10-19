@@ -11,6 +11,8 @@ import {
   Plus, RefreshCw, List, LayoutGrid, Check,
   X
 } from "lucide-react";
+import CropTypeSelector from "../common/CropTypeSelector";
+import { getCropTypeLabel } from "../../lib/cropTypes";
 
 interface CalendarEvent {
   id: number;
@@ -27,6 +29,7 @@ interface CropCalendar {
   id: number;
   name: string;
   crop: string;
+  crop_type_id?: string | null;
   variety: string;
   location: string;
   sow_date: string;
@@ -49,6 +52,7 @@ export default function CalendarModule({ onBack }: CalendarModuleProps) {
   // New Calendar Form
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [crop, setCrop] = useState("Wheat");
+  const [cropTypeId, setCropTypeId] = useState<string | null>(null);
   const [sowDate, setSowDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [location, setLocation] = useState("Punjab");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -88,6 +92,7 @@ export default function CalendarModule({ onBack }: CalendarModuleProps) {
     try {
       const res = await api.post("/api/v1/calendar/generate", {
         crop,
+        crop_type_id: cropTypeId,
         sow_date: sowDate,
         location,
         variety: "Hybrid Vigor",
@@ -158,6 +163,9 @@ export default function CalendarModule({ onBack }: CalendarModuleProps) {
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200 uppercase">
                   {activeCal.crop}
+                  {getCropTypeLabel(activeCal.crop, activeCal.crop_type_id)
+                    ? ` • ${getCropTypeLabel(activeCal.crop, activeCal.crop_type_id)}`
+                    : ""}
                 </span>
                 <span className="text-xs text-slate-500 font-medium">Sown: {activeCal.sow_date}</span>
               </div>
@@ -256,12 +264,23 @@ export default function CalendarModule({ onBack }: CalendarModuleProps) {
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">Crop Selection</label>
                   <select
                     value={crop}
-                    onChange={(e) => setCrop(e.target.value)}
+                    onChange={(e) => {
+                      setCrop(e.target.value);
+                      setCropTypeId(null);
+                    }}
                     className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 outline-none font-semibold transition-colors"
                   >
                     {CROPS.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
+
+                {/* Conditional Crop Type Selector */}
+                <CropTypeSelector
+                  crop={crop}
+                  value={cropTypeId}
+                  onChange={setCropTypeId}
+                  id="calendar-crop-type-select"
+                />
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">Sowing Date</label>

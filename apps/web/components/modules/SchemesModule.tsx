@@ -59,7 +59,10 @@ export default function SchemesModule({ onBack }: SchemesModuleProps) {
     setIsLoading(true);
     try {
       const res = await api.get("/api/v1/schemes/catalog");
-      setSchemes(res.data);
+      const list = Array.isArray(res.data)
+        ? res.data
+        : (res.data?.schemes || res.data?.recommendations || []);
+      setSchemes(list);
     } catch {
       // Demo fallback schemes
       setSchemes([
@@ -115,9 +118,10 @@ export default function SchemesModule({ onBack }: SchemesModuleProps) {
     fetchSchemes();
   }, []);
 
-  const filtered = schemes.filter((s) => {
+  const safeSchemes = Array.isArray(schemes) ? schemes : [];
+  const filtered = safeSchemes.filter((s) => {
     if (selectedCategory === "All") return true;
-    return s.category.toLowerCase().includes(selectedCategory.toLowerCase());
+    return (s.category || "").toLowerCase().includes(selectedCategory.toLowerCase());
   });
 
   return (

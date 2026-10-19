@@ -45,6 +45,7 @@ interface DiagnosisResult {
   gradcam_overlay?: string | null;
   status?: string;
   supported?: boolean;
+  source?: string;
   top3_predictions?: Array<{ name: string; confidence: number }>;
 }
 

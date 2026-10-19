@@ -9,6 +9,7 @@ from app.db.database import get_db
 from app.models.user import User
 from app.models.mandi import MandiListing
 from app.services.activity_logger import log_activity
+from app.core.crop_types import validate_crop_type
 
 router = APIRouter()
 
@@ -17,6 +18,7 @@ router = APIRouter()
 
 class CreateListingRequest(BaseModel):
     crop: str
+    crop_type_id: Optional[str] = None
     quantity: float
     unit: Optional[str] = "qtl"
     price_per_unit: float
@@ -30,6 +32,7 @@ class ListingOut(BaseModel):
     id: int
     user_id: int
     crop: str
+    crop_type_id: Optional[str] = None
     quantity: float
     unit: str
     price_per_unit: float
@@ -74,6 +77,7 @@ def get_listings(
 
 
 @router.get("/listings/my", response_model=List[ListingOut])
+@router.get("/listings/me", response_model=List[ListingOut])
 def get_my_listings(
     *,
     db: Session = Depends(get_db),
@@ -96,9 +100,12 @@ def create_listing(
     current_user: User = Depends(deps.get_current_active_user),
 ) -> Any:
     """Publish a buyer/seller listing, auto-log to activity log."""
+    validated_crop_type = validate_crop_type(payload.crop, payload.crop_type_id)
+
     db_listing = MandiListing(
         user_id=current_user.id,
         crop=payload.crop,
+        crop_type_id=validated_crop_type,
         quantity=payload.quantity,
         unit=payload.unit or "qtl",
         price_per_unit=payload.price_per_unit,

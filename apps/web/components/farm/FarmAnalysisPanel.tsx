@@ -107,6 +107,7 @@ interface FarmAnalysisPanelProps {
   onSelectBarrenParcel: (parcel: BarrenParcel | null) => void;
   onAnalyzeBoundary: () => void;
   hasBoundary: boolean;
+  emptyMessage?: string;
 }
 
 export default function FarmAnalysisPanel({
@@ -117,7 +118,8 @@ export default function FarmAnalysisPanel({
   selectedBarrenParcel,
   onSelectBarrenParcel,
   onAnalyzeBoundary,
-  hasBoundary
+  hasBoundary,
+  emptyMessage
 }: FarmAnalysisPanelProps) {
   const [activeTab, setActiveTab] = useState<"overview" | "zones" | "growth" | "barren">("overview");
   const [showEfficiencyModal, setShowEfficiencyModal] = useState(false);
@@ -148,7 +150,7 @@ export default function FarmAnalysisPanel({
           <p className="text-xs text-neutral-400 mt-1 max-w-xs mx-auto leading-relaxed">
             {hasBoundary
               ? "Boundary completed! Click below to compute multi-spectral indices, zones, and AI reasoning."
-              : "Locate your farm or use the 'Explore Demo Farm' button to inspect high-resolution agricultural analytics."}
+              : emptyMessage || "Select one of your farms, or draw a boundary on the map to analyse it."}
           </p>
         </div>
         {hasBoundary && (
@@ -219,11 +221,11 @@ export default function FarmAnalysisPanel({
 
           <div className="p-3 rounded-2xl bg-neutral-900/70 border border-neutral-800/60 text-left">
             <div className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider mb-0.5">
-              Moisture
+              Water Index
             </div>
             <div className="text-lg font-bold text-blue-400">{data.moisture_index}%</div>
             <div className="text-[9px] text-neutral-400 font-medium">
-              {(data as any).data_provenance?.moisture_index === "demo" || data.is_demo ? "Demo layer" : "Adequate"}
+              {(data as any).ndwi != null ? `NDWI ${(data as any).ndwi} (Sentinel-2)` : "Demo layer"}
             </div>
           </div>
 
@@ -346,7 +348,9 @@ export default function FarmAnalysisPanel({
           {activeTab === "zones" && (
             <div className="space-y-3">
               <p className="text-[11px] text-neutral-400 text-left">
-                Partitioned into {data.zones.length} sub-zones. Click any sector to inspect localized moisture dynamics and suggested actions.
+                {data.zones.length > 0
+                  ? `Partitioned into ${data.zones.length} sub-zones, each coloured by its own Sentinel-2 NDVI. Click a zone for details.`
+                  : "No zone breakdown: a clear Sentinel-2 scene for this boundary is not available right now (see source line above)."}
               </p>
 
               <div className="space-y-2">

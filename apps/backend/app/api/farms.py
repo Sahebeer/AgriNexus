@@ -12,6 +12,8 @@ from app.models.satellite import SatelliteObservation, EarthIntelligenceForecast
 from app.services.activity_logger import log_activity
 from app.services.earth_intelligence import calculate_explainable_forecasts
 
+from app.core.crop_types import validate_crop_type, get_crop_types, has_crop_types
+
 router = APIRouter()
 
 
@@ -27,8 +29,23 @@ class CreateFarmRequest(BaseModel):
     gps_coordinates: Optional[str] = ""
     boundary_geojson: Optional[Any] = None  # GeoJSON Polygon/MultiPolygon (geometry, Feature or text)
     current_crop: str
+    crop_type_id: Optional[str] = None
     sowing_date: date
     irrigation_method: str
+
+
+class UpdateFarmRequest(BaseModel):
+    name: Optional[str] = None
+    area: Optional[float] = None
+    area_unit: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    village: Optional[str] = None
+    gps_coordinates: Optional[str] = None
+    current_crop: Optional[str] = None
+    crop_type_id: Optional[str] = None
+    sowing_date: Optional[date] = None
+    irrigation_method: Optional[str] = None
 
 
 class SoilReportCreate(BaseModel):
@@ -111,6 +128,7 @@ class FarmOut(BaseModel):
     gps_coordinates: Optional[str] = ""
     boundary_geojson: Optional[str] = None
     current_crop: str
+    crop_type_id: Optional[str] = None
     sowing_date: date
     irrigation_method: str
     soil_reports: List[SoilReportOut] = []
@@ -149,15 +167,24 @@ def create_farm(
     Registers a new farm field in the database and seeds an initial
     healthy benchmark soil report.
     """
+    farm_state = payload.state
     if payload.gps_coordinates:
-        from app.services.satellite import parse_gps_coordinates, check_gps_state_match
+        from app.services.satellite import parse_gps_coordinates, check_gps_state_match, resolve_state_from_gps
         lat, lon = parse_gps_coordinates(payload.gps_coordinates)
         if lat is not None and lon is not None:
-            if not check_gps_state_match(lat, lon, payload.state):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="GPS coordinates do not match the selected state region. Please verify coordinates."
-                )
+            resolved_state = resolve_state_from_gps(lat, lon)
+            if not farm_state and resolved_state:
+                farm_state = resolved_state
+            elif farm_state and not check_gps_state_match(lat, lon, farm_state):
+                if resolved_state:
+                    farm_state = resolved_state  # Auto-align state to authentic GPS coordinates
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="GPS coordinates do not match the selected state region. Please verify coordinates."
+                    )
+    elif not farm_state and current_user.state:
+        farm_state = current_user.state
 
     boundary_text = None
     if payload.boundary_geojson:
@@ -167,17 +194,20 @@ def create_farm(
         except GeometryError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid field boundary: {e}")
 
+    validated_crop_type = validate_crop_type(payload.current_crop, payload.crop_type_id)
+
     db_farm = Farm(
         user_id=current_user.id,
         name=payload.name,
         area=payload.area,
         area_unit=payload.area_unit or "hectares",
-        state=payload.state,
+        state=farm_state or "Maharashtra",
         district=payload.district,
         village=payload.village,
         gps_coordinates=payload.gps_coordinates or "",
         boundary_geojson=boundary_text,
         current_crop=payload.current_crop,
+        crop_type_id=validated_crop_type,
         sowing_date=payload.sowing_date,
         irrigation_method=payload.irrigation_method,
     )
@@ -240,6 +270,70 @@ def create_farm(
 
     db.refresh(db_farm)
     return db_farm
+
+
+@router.patch("/{farm_id}", response_model=FarmOut)
+@router.put("/{farm_id}", response_model=FarmOut)
+def update_farm(
+    farm_id: int,
+    payload: UpdateFarmRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """Updates an existing farm field with crop and crop_type_id validation."""
+    farm = db.query(Farm).filter(Farm.id == farm_id, Farm.user_id == current_user.id).first()
+    if not farm:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Farm not found")
+
+    # If crop is changed:
+    if payload.current_crop is not None and payload.current_crop != farm.current_crop:
+        # Rule 7: If a crop is changed, reset previously selected crop type if not explicitly supplied
+        target_type = payload.crop_type_id  # If None, validates and resets to None
+        farm.crop_type_id = validate_crop_type(payload.current_crop, target_type)
+        farm.current_crop = payload.current_crop
+    elif payload.crop_type_id is not None:
+        # Same crop, updating or clearing crop_type_id
+        farm.crop_type_id = validate_crop_type(farm.current_crop, payload.crop_type_id)
+
+    if payload.name is not None:
+        farm.name = payload.name
+    if payload.area is not None:
+        farm.area = payload.area
+    if payload.area_unit is not None:
+        farm.area_unit = payload.area_unit
+    if payload.state is not None:
+        farm.state = payload.state
+    if payload.district is not None:
+        farm.district = payload.district
+    if payload.village is not None:
+        farm.village = payload.village
+    if payload.gps_coordinates is not None:
+        farm.gps_coordinates = payload.gps_coordinates
+        if payload.gps_coordinates:
+            from app.services.satellite import parse_gps_coordinates, resolve_state_from_gps, check_gps_state_match
+            lat, lon = parse_gps_coordinates(payload.gps_coordinates)
+            if lat is not None and lon is not None:
+                resolved_state = resolve_state_from_gps(lat, lon)
+                if resolved_state and (not farm.state or not check_gps_state_match(lat, lon, farm.state)):
+                    farm.state = resolved_state
+    if payload.sowing_date is not None:
+        farm.sowing_date = payload.sowing_date
+    if payload.irrigation_method is not None:
+        farm.irrigation_method = payload.irrigation_method
+
+    db.commit()
+    db.refresh(farm)
+    return farm
+
+
+@router.get("/crop-types/{crop_name}")
+def get_crop_type_options(crop_name: str) -> Any:
+    """Returns approved crop type options for the given crop."""
+    return [
+        {"id": opt.id, "label": opt.label, "aliases": list(opt.aliases)}
+        for opt in get_crop_types(crop_name)
+    ]
+
 
 
 @router.delete("/{farm_id}", status_code=status.HTTP_204_NO_CONTENT)

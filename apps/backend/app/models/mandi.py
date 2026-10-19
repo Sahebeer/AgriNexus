@@ -13,6 +13,7 @@ class MandiListing(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     crop = Column(String, nullable=False)
+    crop_type_id = Column(String, nullable=True)
     quantity = Column(Float, nullable=False)
     unit = Column(String, nullable=False, default="qtl") # qtl (quintal) | kg | tonnes
     price_per_unit = Column(Float, nullable=False)        # price in INR per unit

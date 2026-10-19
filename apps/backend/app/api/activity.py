@@ -4,7 +4,7 @@ from typing import Any, List, Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 
 from app.api import deps
 from app.db.database import get_db
@@ -134,7 +134,7 @@ def get_stats(
 ) -> Any:
     """Aggregate stats — total per type."""
     rows = (
-        db.query(ActivityLog.activity_type, db.func.count(ActivityLog.id))
+        db.query(ActivityLog.activity_type, func.count(ActivityLog.id))
         .filter(ActivityLog.user_id == current_user.id)
         .group_by(ActivityLog.activity_type)
         .all()

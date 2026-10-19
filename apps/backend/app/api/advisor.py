@@ -49,7 +49,7 @@ class SessionResponse(BaseModel):
 @router.get("/sessions", response_model=List[SessionResponse])
 def get_chat_sessions(
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_user_optional)
+    current_user: User = Depends(deps.get_current_active_user)
 ) -> Any:
     """
     Get all unique chat session IDs and titles for the current user.
@@ -67,7 +67,7 @@ def get_chat_sessions(
 def get_session_messages(
     session_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_user_optional)
+    current_user: User = Depends(deps.get_current_active_user)
 ) -> Any:
     """
     Get all messages within a specific session.
@@ -342,7 +342,7 @@ def post_chat_message(
 def delete_chat_session(
     session_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_user_optional)
+    current_user: User = Depends(deps.get_current_active_user)
 ):
     """
     Deletes the entire conversation thread history.

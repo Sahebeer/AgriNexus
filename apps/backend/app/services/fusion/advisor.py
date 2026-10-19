@@ -24,11 +24,12 @@ class AgronomyAdvisor:
     """
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
+        from app.core.gemini import GEMINI_API_KEY, resolve_gemini_model
+        self.api_key = api_key or GEMINI_API_KEY
         if self.api_key and GEMINI_AVAILABLE:
             try:
                 genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel("gemini-1.5-flash")
+                self.model = genai.GenerativeModel(resolve_gemini_model())
                 self.enabled = True
             except Exception as e:
                 logger.warning(f"Failed to configure Gemini model: {e}")

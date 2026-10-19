@@ -157,7 +157,9 @@ def search_stac(field: BaseGeometry, start: date, end: date) -> List[Dict[str, A
     """Search Earth Search for L2A items intersecting the field (follows paging)."""
     body: Dict[str, Any] = {
         "collections": [STAC_COLLECTION],
-        "intersects": mapping(field),
+        # bbox rather than the polygon: STAC rejects rings with repeated vertices, and
+        # select_scenes() / per-pixel masks still use the exact field geometry.
+        "bbox": list(field.bounds),
         "datetime": f"{start.isoformat()}T00:00:00Z/{end.isoformat()}T23:59:59Z",
         "query": {"eo:cloud_cover": {"lt": MAX_SCENE_CLOUD_PCT}},
         "limit": 100,
@@ -200,8 +202,10 @@ def _asset(feat: Dict[str, Any], key: str) -> Tuple[str, float, float, Optional[
     return a["href"], float(rb.get("scale", 1.0)), offset, rb.get("nodata", 0)
 
 
-def process_scene(feat: Dict[str, Any], field: BaseGeometry) -> Dict[str, Any]:
-    """Read one scene's bands over the field and return zonal stats for all indices."""
+def process_scene(feat: Dict[str, Any], field: BaseGeometry,
+                  zones: Optional[List[BaseGeometry]] = None) -> Dict[str, Any]:
+    """Read one scene's bands over the field and return zonal stats for all indices.
+    With ``zones`` (WGS84 polygons), also returns per-zone NDVI/NDWI clipped to the field."""
     import rasterio
     from rasterio.enums import Resampling
     from rasterio.features import geometry_mask
@@ -253,7 +257,37 @@ def process_scene(feat: Dict[str, Any], field: BaseGeometry) -> Dict[str, Any]:
     idx = compute_indices(refl["red"], refl["nir"], refl["green"], refl["blue"])
     ndvi = zonal_stats(idx["ndvi"], field_mask, valid)
     others = {k: zonal_stats(v, field_mask, valid)["mean"] for k, v in idx.items() if k != "ndvi"}
-    return {"ndvi": ndvi, **{f"{k}_mean": v for k, v in others.items()}}
+    out = {"ndvi": ndvi, **{f"{k}_mean": v for k, v in others.items()}}
+    if zones is not None:
+        out["zones"] = []
+        for z in zones:
+            part = shp_transform(to_utm, z).intersection(field_utm)
+            if part.is_empty or part.area <= 0:
+                out["zones"].append(None)
+                continue
+            zmask = geometry_mask([mapping(part)], out_shape=shape_hw, transform=win_transform, invert=True)
+            if zmask.sum() == 0:
+                zmask = geometry_mask([mapping(part)], out_shape=shape_hw, transform=win_transform,
+                                      invert=True, all_touched=True)
+            zs = zonal_stats(idx["ndvi"], zmask, valid)
+            zs["ndwi_mean"] = zonal_stats(idx["ndwi"], zmask, valid)["mean"]
+            out["zones"].append(zs)
+    return out
+
+
+_zone_cache: Dict[Tuple[str, str], List[Optional[Dict[str, Any]]]] = {}
+
+
+def zone_index_stats(scene_id: str, field: BaseGeometry,
+                     zones: List[BaseGeometry]) -> List[Optional[Dict[str, Any]]]:
+    """Per-zone NDVI/NDWI for one already-selected scene (STAC item fetched by id, cached in-process)."""
+    key = (scene_id, field.wkt + "|" + "|".join(z.wkt for z in zones))
+    if key not in _zone_cache:
+        resp = requests.get(f"{STAC_API_URL}/collections/{STAC_COLLECTION}/items/{scene_id}",
+                            timeout=HTTP_TIMEOUT_S)
+        resp.raise_for_status()
+        _zone_cache[key] = process_scene(resp.json(), field, zones)["zones"]
+    return _zone_cache[key]
 
 
 # ── Cache-aware orchestration ────────────────────────────────────────

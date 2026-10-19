@@ -10,6 +10,7 @@ from app.models.user import User
 from app.models.calendar import CropCalendar, CalendarEvent
 from app.services.calendar_gen import generate_calendar_events
 from app.services.activity_logger import log_activity
+from app.core.crop_types import validate_crop_type
 
 router = APIRouter()
 
@@ -18,6 +19,7 @@ router = APIRouter()
 
 class CreateCalendarRequest(BaseModel):
     crop: str
+    crop_type_id: Optional[str] = None
     sow_date: date
     variety: Optional[str] = ""
     location: Optional[str] = ""
@@ -42,6 +44,7 @@ class CalendarOut(BaseModel):
     id: int
     name: str
     crop: str
+    crop_type_id: Optional[str] = None
     variety: Optional[str] = ""
     location: Optional[str] = ""
     sow_date: date
@@ -55,6 +58,7 @@ class CalendarSummary(BaseModel):
     id: int
     name: str
     crop: str
+    crop_type_id: Optional[str] = None
     sow_date: date
     location: Optional[str] = ""
 
@@ -75,17 +79,20 @@ def create_calendar(
     *,
     payload: CreateCalendarRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_user_optional),
+    current_user: User = Depends(deps.get_current_active_user),
 ) -> Any:
     """Generate and save a full crop calendar from sow date."""
     name = payload.name or f"{payload.crop} Calendar — {payload.sow_date.strftime('%b %Y')}"
     if payload.location:
         name += f" · {payload.location}"
 
+    validated_crop_type = validate_crop_type(payload.crop, payload.crop_type_id)
+
     db_cal = CropCalendar(
         user_id=current_user.id,
         name=name,
         crop=payload.crop,
+        crop_type_id=validated_crop_type,
         variety=payload.variety or "",
         location=payload.location or "",
         sow_date=payload.sow_date,
@@ -134,25 +141,21 @@ def create_calendar(
 def list_calendars(
     *,
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_user_optional),
+    current_user: User = Depends(deps.get_current_active_user),
 ) -> Any:
-    cals = (
+    return (
         db.query(CropCalendar)
         .filter(CropCalendar.user_id == current_user.id)
         .order_by(CropCalendar.created_at.desc())
         .all()
     )
-    if not cals:
-        # Fallback to any seeded crop calendars
-        cals = db.query(CropCalendar).order_by(CropCalendar.created_at.desc()).all()
-    return cals
 
 
 @router.get("/{cal_id}", response_model=CalendarOut)
 def get_calendar(
     cal_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_user_optional),
+    current_user: User = Depends(deps.get_current_active_user),
 ) -> Any:
     cal = (
         db.query(CropCalendar)
@@ -161,6 +164,8 @@ def get_calendar(
     )
     if not cal:
         raise HTTPException(status_code=404, detail="Calendar not found")
+    if not current_user.is_superuser and cal.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this calendar")
     return cal
 
 
@@ -168,11 +173,14 @@ def get_calendar(
 def toggle_event(
     event_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_user_optional),
+    current_user: User = Depends(deps.get_current_active_user),
 ) -> Any:
     ev = db.query(CalendarEvent).filter(CalendarEvent.id == event_id).first()
     if not ev:
         raise HTTPException(status_code=404, detail="Event not found")
+    cal = db.query(CropCalendar).filter(CropCalendar.id == ev.calendar_id).first()
+    if cal and not current_user.is_superuser and cal.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to modify this event")
 
     ev.is_completed = not ev.is_completed
     ev.completed_at = datetime.utcnow() if ev.is_completed else None
@@ -187,8 +195,14 @@ def update_event(
     event_id: int,
     payload: EventPatchRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_user_optional),
+    current_user: User = Depends(deps.get_current_active_user),
 ) -> Any:
+    cal = db.query(CropCalendar).filter(CropCalendar.id == cal_id).first()
+    if not cal:
+        raise HTTPException(status_code=404, detail="Calendar not found")
+    if not current_user.is_superuser and cal.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to modify this calendar")
+
     ev = (
         db.query(CalendarEvent)
         .filter(
@@ -215,7 +229,7 @@ def update_event(
 def delete_calendar(
     cal_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(deps.get_current_user_optional),
+    current_user: User = Depends(deps.get_current_active_user),
 ) -> None:
     cal = (
         db.query(CropCalendar)
@@ -224,5 +238,7 @@ def delete_calendar(
     )
     if not cal:
         raise HTTPException(status_code=404, detail="Calendar not found")
+    if not current_user.is_superuser and cal.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this calendar")
     db.delete(cal)
     db.commit()

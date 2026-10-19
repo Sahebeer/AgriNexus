@@ -5,9 +5,12 @@ import api from "../../lib/api";
 import { useAuthStore } from "../../store/authStore";
 import { useToastStore } from "../../store/toastStore";
 import FieldRealDataPanel from "../farm/FieldRealDataPanel";
+import CropTypeSelector from "../common/CropTypeSelector";
+import { getCropTypeLabel } from "../../lib/cropTypes";
 import {
   ArrowLeft,
   User,
+  Mail,
   Settings,
   Map,
   MapPin,
@@ -54,6 +57,7 @@ interface FarmField {
   village: string;
   gps_coordinates: string;
   current_crop: string;
+  crop_type_id?: string | null;
   sowing_date: string;
   irrigation_method: string;
   boundary_geojson?: string | null;
@@ -127,6 +131,7 @@ export default function ProfileModule({ onBack }: ProfileModuleProps) {
   const [newFarmDistrict, setNewFarmDistrict] = useState("");
   const [newFarmVillage, setNewFarmVillage] = useState("");
   const [newCrop, setNewCrop] = useState("Wheat");
+  const [newCropTypeId, setNewCropTypeId] = useState<string | null>(null);
   const [newSowDate, setNewSowDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [newIrrigation, setNewIrrigation] = useState("Drip Irrigation");
   const [isSubmittingFarm, setIsSubmittingFarm] = useState(false);
@@ -147,12 +152,14 @@ export default function ProfileModule({ onBack }: ProfileModuleProps) {
   const [isSubmittingSoil, setIsSubmittingSoil] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (!user) {
+      checkAuth();
+    } else {
       setFullName(user.full_name || "");
       setPhoneNumber(user.phone_number || "");
       setLocationState(user.state || "");
     }
-  }, [user]);
+  }, [user, checkAuth]);
 
   const fetchFarms = async () => {
     setIsLoadingFarms(true);
@@ -205,6 +212,7 @@ export default function ProfileModule({ onBack }: ProfileModuleProps) {
         district: newFarmDistrict,
         village: newFarmVillage,
         current_crop: newCrop,
+        crop_type_id: newCropTypeId,
         sowing_date: newSowDate,
         irrigation_method: newIrrigation,
       });
@@ -321,7 +329,10 @@ export default function ProfileModule({ onBack }: ProfileModuleProps) {
                     }`}
                   >
                     <span className="font-bold text-sm text-slate-900 truncate w-full">{f.name}</span>
-                    <span className="text-xs text-slate-500 font-medium">{f.area} Ha • {f.current_crop}</span>
+                    <span className="text-xs text-slate-500 font-medium">
+                      {f.area} Ha • {f.current_crop}
+                      {getCropTypeLabel(f.current_crop, f.crop_type_id) ? ` (${getCropTypeLabel(f.current_crop, f.crop_type_id)})` : ""}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -336,6 +347,9 @@ export default function ProfileModule({ onBack }: ProfileModuleProps) {
                   <div>
                     <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full uppercase">
                       {activeFarm.current_crop}
+                      {getCropTypeLabel(activeFarm.current_crop, activeFarm.crop_type_id)
+                        ? ` • ${getCropTypeLabel(activeFarm.current_crop, activeFarm.crop_type_id)}`
+                        : ""}
                     </span>
                     <h2 className="text-2xl font-bold text-slate-900 mt-2">{activeFarm.name}</h2>
                     <p className="text-xs text-slate-500 mt-0.5">{activeFarm.village}, {activeFarm.district}, {activeFarm.state}</p>
@@ -463,6 +477,21 @@ export default function ProfileModule({ onBack }: ProfileModuleProps) {
 
           <form onSubmit={handleUpdateProfile} className="space-y-5">
             <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="email"
+                  value={user?.email || ""}
+                  disabled
+                  readOnly
+                  className="w-full bg-slate-100 border border-slate-200 text-slate-600 rounded-xl pl-10 pr-4 py-2.5 text-xs font-semibold outline-none cursor-not-allowed select-all"
+                />
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">Registered account email & primary login ID (read-only).</p>
+            </div>
+
+            <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">Full Name</label>
               <input
                 type="text"
@@ -567,7 +596,10 @@ export default function ProfileModule({ onBack }: ProfileModuleProps) {
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">Current Crop</label>
                     <select
                       value={newCrop}
-                      onChange={(e) => setNewCrop(e.target.value)}
+                      onChange={(e) => {
+                        setNewCrop(e.target.value);
+                        setNewCropTypeId(null);
+                      }}
                       className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 outline-none font-semibold transition-colors"
                     >
                       {CROPS.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -584,6 +616,14 @@ export default function ProfileModule({ onBack }: ProfileModuleProps) {
                     </select>
                   </div>
                 </div>
+
+                {/* Conditional Crop Type / Variety Selector */}
+                <CropTypeSelector
+                  crop={newCrop}
+                  value={newCropTypeId}
+                  onChange={setNewCropTypeId}
+                  id="farm-crop-type-select"
+                />
               </div>
 
               <div className="border-t border-slate-100 p-5 bg-slate-50/50 flex gap-3">

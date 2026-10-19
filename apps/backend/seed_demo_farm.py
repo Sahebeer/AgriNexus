@@ -97,35 +97,75 @@ def seed_data_for_db(session, include_all_users: bool = True):
 
         today = date.today()
 
-        # 1. Create Farm 1: Green Valley Precision Acres (Wheat)
+        user_state = (user.state or "Maharashtra").strip().title()
+        if user_state == "Maharashtra":
+            farm1_name = "Sahyadri Precision Agro Block"
+            farm1_state = "Maharashtra"
+            farm1_district = "Nashik"
+            farm1_village = "Niphad"
+            farm1_gps = "20.0825 N, 74.1140 E"
+            farm1_boundary = '{"type":"Polygon","coordinates":[[[74.111,20.080],[74.118,20.080],[74.118,20.086],[74.111,20.086],[74.111,20.080]]]}'
+            farm1_crop = "Wheat (Lokwan)"
+            farm1_crop_type = "sharbati"
+
+            farm2_name = "Deccan Precision Horticulture Block"
+            farm2_state = "Maharashtra"
+            farm2_district = "Pune"
+            farm2_village = "Baramati"
+            farm2_gps = "18.1512 N, 74.5772 E"
+            farm2_boundary = '{"type":"Polygon","coordinates":[[[74.574,18.149],[74.580,18.149],[74.580,18.154],[74.574,18.154],[74.574,18.149]]]}'
+            farm2_crop = "Tomato (Hybrid Avinash-3)"
+            farm2_crop_type = "determinate"
+        else:
+            farm1_name = "Green Valley Precision Acres"
+            farm1_state = "Punjab"
+            farm1_district = "Ludhiana"
+            farm1_village = "Samrala"
+            farm1_gps = "30.9010 N, 75.8573 E"
+            farm1_boundary = '{"type":"Polygon","coordinates":[[[75.855,30.899],[75.860,30.899],[75.860,30.903],[75.855,30.903],[75.855,30.899]]]}'
+            farm1_crop = "Wheat (PBW 725)"
+            farm1_crop_type = "sharbati"
+
+            farm2_name = "Sunrise Organic Block"
+            farm2_state = "Punjab"
+            farm2_district = "Ludhiana"
+            farm2_village = "Khanna"
+            farm2_gps = "30.7025 N, 76.2198 E"
+            farm2_boundary = '{"type":"Polygon","coordinates":[[[76.217,30.701],[76.222,30.701],[76.222,30.705],[76.217,30.705],[76.217,30.701]]]}'
+            farm2_crop = "Tomato (Hybrid Avinash-3)"
+            farm2_crop_type = "determinate"
+
+        # 1. Create Farm 1
         farm1 = Farm(
             user_id=user.id,
-            name="Green Valley Precision Acres",
+            name=farm1_name,
             area=4.5,
             area_unit="hectares",
-            state="Punjab",
-            district="Ludhiana",
-            village="Samrala",
-            gps_coordinates="30.9010 N, 75.8573 E",
-            boundary_geojson='{"type":"Polygon","coordinates":[[[75.855,30.899],[75.860,30.899],[75.860,30.903],[75.855,30.903],[75.855,30.899]]]}',
-            current_crop="Wheat (PBW 725)",
+            state=farm1_state,
+            district=farm1_district,
+            village=farm1_village,
+            gps_coordinates=farm1_gps,
+            boundary_geojson=farm1_boundary,
+            current_crop=farm1_crop,
+            crop_type_id=farm1_crop_type,
             sowing_date=today - timedelta(days=65),
             irrigation_method="Drip Irrigation & Solar Sprinklers"
         )
         session.add(farm1)
 
-        # 2. Create Farm 2: Sunrise Organic Horticulture Block (Tomato)
+        # 2. Create Farm 2
         farm2 = Farm(
             user_id=user.id,
-            name="Sunrise Organic Block",
+            name=farm2_name,
             area=2.0,
             area_unit="hectares",
-            state="Punjab",
-            district="Ludhiana",
-            village="Khanna",
-            gps_coordinates="30.7025 N, 76.2198 E",
-            boundary_geojson='{"type":"Polygon","coordinates":[[[76.217,30.701],[76.222,30.701],[76.222,30.705],[76.217,30.705],[76.217,30.701]]]}',
-            current_crop="Tomato (Hybrid Avinash-3)",
+            state=farm2_state,
+            district=farm2_district,
+            village=farm2_village,
+            gps_coordinates=farm2_gps,
+            boundary_geojson=farm2_boundary,
+            current_crop=farm2_crop,
+            crop_type_id=farm2_crop_type,
             sowing_date=today - timedelta(days=40),
             irrigation_method="Drip Fertigation System"
         )
@@ -438,8 +478,8 @@ def seed_data_for_db(session, include_all_users: bool = True):
             ActivityLog(
                 user_id=user.id,
                 activity_type="Field Registry",
-                title="Registered Farm: Green Valley Precision Acres (4.5 Ha)",
-                description="Geotagged field coordinates 30.9010 N, 75.8573 E in Samrala, Ludhiana.",
+                title=f"Registered Farm: {farm1.name} ({farm1.area} Ha)",
+                description=f"Geotagged field coordinates {farm1.gps_coordinates} in {farm1.village}, {farm1.district}, {farm1.state}.",
                 activity_date=today - timedelta(days=70),
                 source="manual"
             ),

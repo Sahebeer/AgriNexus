@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.api import deps
 from app.db.database import get_db
 from app.models.user import User
+from app.models.farm import Farm
 from app.services.geospatial.geometry import calculate_geodesic_area
 from app.services.barren_land import detect_nearby_barren_land
 from app.services.satellite_provider import get_default_satellite_provider
@@ -41,19 +42,57 @@ class AreaCalculationResponse(BaseModel):
 
 # ─── Endpoints ───────────────────────────────────────────────────────────────
 
-@router.get("/demo-farm", status_code=status.HTTP_200_OK)
-def get_flagship_demo_farm() -> Any:
+def _boundary_ring(boundary_geojson: str) -> List[List[float]]:
+    """Outer ring ([lon, lat] pairs) of a stored Polygon / MultiPolygon / Feature boundary."""
+    import json
+    geom = json.loads(boundary_geojson)
+    if geom.get("type") == "FeatureCollection":
+        geom = (geom.get("features") or [{}])[0].get("geometry") or {}
+    if geom.get("type") == "Feature":
+        geom = geom.get("geometry") or {}
+    if geom.get("type") == "Polygon":
+        return geom["coordinates"][0]
+    if geom.get("type") == "MultiPolygon":
+        return geom["coordinates"][0][0]
+    raise ValueError(f"unsupported boundary type {geom.get('type')!r}")
+
+
+@router.get("/farms/{farm_id}", status_code=status.HTTP_200_OK)
+def get_owned_farm_analysis(
+    farm_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
     """
-    Returns the flagship rural Indian demonstration farm (Niphad, Nashik, Maharashtra)
-    with all multi-spectral layers, zones, NDVI historical trajectory, and barren land.
+    Multi-spectral analysis of one of the current user's own farms, using its stored boundary.
+    Farms owned by other accounts return 404, exactly like farms that do not exist.
     """
-    provider = get_default_satellite_provider()
-    return provider.get_demo_farm()
+    farm = db.query(Farm).filter(Farm.id == farm_id, Farm.user_id == current_user.id).first()
+    if not farm:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Farm field not found or unauthorized")
+    if not farm.boundary_geojson:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="This farm has no boundary yet. Draw it on the map or import a KML/GeoJSON file.")
+    try:
+        ring = _boundary_ring(farm.boundary_geojson)
+        provider = get_default_satellite_provider()
+        try:
+            result = provider.get_farm_analysis(boundary_coordinates=ring, crop=farm.current_crop or "Unknown crop",
+                                                farm_name=farm.name, farm_id=farm.id)
+        except TypeError:  # providers without the farm_id argument
+            result = provider.get_farm_analysis(boundary_coordinates=ring, crop=farm.current_crop or "Unknown crop",
+                                                farm_name=farm.name)
+    except (ValueError, KeyError, GeometryError) as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Stored boundary is invalid: {e}")
+    result["db_farm_id"] = farm.id
+    result["location"] = ", ".join(x for x in (farm.village, farm.district, farm.state) if x)
+    return result
 
 
 @router.post("/analyze-boundary", status_code=status.HTTP_200_OK)
 def analyze_custom_farm_boundary(
-    payload: BoundaryAnalysisRequest
+    payload: BoundaryAnalysisRequest,
+    current_user: User = Depends(deps.get_current_active_user),
 ) -> Any:
     """
     Ingests a user-drawn boundary polygon, computes exact geodesic area,

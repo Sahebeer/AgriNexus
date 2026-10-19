@@ -17,7 +17,6 @@ from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.models.farm import Farm
 from app.models.satellite import SatelliteObservation
-from app.services.satellite_provider import get_default_satellite_provider
 
 router = APIRouter()
 
@@ -114,31 +113,29 @@ def get_system_status(
 
 @router.get("/demo-farms", status_code=status.HTTP_200_OK)
 def list_admin_demo_farms(
+    db: Session = Depends(get_db),
     admin_user: User = Depends(deps.get_current_active_admin)
 ) -> List[Dict[str, Any]]:
     """
-    Returns curated demonstration farm presets for quick admin review.
+    The signed-in admin's own farms (no synthetic presets). Health / NDVI come from the
+    latest stored satellite observation and are null when none exists yet.
     """
-    provider = get_default_satellite_provider()
-    primary_demo = provider.get_demo_farm()
-
-    return [
-        primary_demo,
-        {
-            "farm_id": "DEMO-FARM-002",
-            "name": "Malwa Plateau Soybean & Gram Cluster",
-            "location": "Hoshangabad District, Madhya Pradesh",
-            "country": "India",
-            "center": [22.7510, 77.7280],
-            "crop": "Soybean (JS 95-60)",
-            "crop_confidence": 0.961,
-            "area_hectares": 8.6,
-            "area_acres": 21.25,
-            "health_score": 79,
-            "health_status": "Good",
-            "ndvi_mean": 0.69,
-            "moisture_index": 62.0,
-            "satellite_source": "DEMO DATA — Synthetic Multi-Spectral Sentinel-2 Simulation",
-            "is_demo": True
-        }
-    ]
+    out = []
+    for farm in db.query(Farm).filter(Farm.user_id == admin_user.id).order_by(Farm.id).all():
+        obs = (db.query(SatelliteObservation)
+               .filter(SatelliteObservation.farm_id == farm.id, SatelliteObservation.source == "sentinel-2",
+                       SatelliteObservation.ndvi.isnot(None))
+               .order_by(SatelliteObservation.observation_date.desc()).first())
+        ndvi = obs.ndvi if obs else None
+        hectares = farm.area if (farm.area_unit or "hectares").lower().startswith("hect") else round(farm.area * 0.404686, 2)
+        out.append({
+            "farm_id": farm.id,
+            "name": farm.name,
+            "location": ", ".join(x for x in (farm.village, farm.district, farm.state) if x),
+            "crop": farm.current_crop,
+            "area_hectares": hectares,
+            "health_score": round(ndvi * 100) if ndvi is not None else None,
+            "ndvi_mean": round(ndvi, 2) if ndvi is not None else None,
+            "is_demo": False,
+        })
+    return out

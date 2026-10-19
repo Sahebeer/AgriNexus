@@ -77,6 +77,18 @@ def get_weather_forecast(
             weather_data["agri_indices"] = get_agro_indices(
                 weather_data["lat"], weather_data["lon"],
                 sowing_date=resolved_farm.sowing_date if resolved_farm else None, db=db)
+            agri = weather_data["agri_indices"]
+            z = agri.get("drought_index")
+            if z is not None and z <= -1.0:
+                weather_data.setdefault("alerts", []).append({
+                    "type": "Drought Alert",
+                    "severity": "Red" if z <= -1.5 else "Amber",
+                    "message": (f"{agri.get('drought_category', 'Dry spell').capitalize()}: "
+                                f"{agri.get('precip_30d_mm')} mm rain vs {agri.get('et0_30d_mm')} mm "
+                                f"evapotranspiration in the last 30 days (index {z} vs 10-year normal)."),
+                })
+                weather_data.setdefault("advisories", []).append(
+                    "Prioritise irrigation for moisture-sensitive crop stages and mulch to reduce evaporation.")
         return weather_data
     except HTTPException:
         raise

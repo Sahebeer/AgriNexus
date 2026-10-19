@@ -144,6 +144,40 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+
+          {/* Quick Demo Credentials */}
+          <div className="mt-5 pt-4 border-t border-slate-100 space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 text-center">
+              Quick Demo Accounts
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail("admin@agrinexus.demo");
+                  setPassword("admin123");
+                  setValidationError(null);
+                }}
+                className="py-2 px-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 text-[11px] font-semibold transition-all text-center"
+              >
+                Admin (Maharashtra)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail("realdata.demo@agrinexus.dev");
+                  setPassword("RealData123!");
+                  setValidationError(null);
+                }}
+                className="py-2 px-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 text-[11px] font-semibold transition-all text-center"
+              >
+                Farmer (Niphad Field)
+              </button>
+            </div>
+            <div className="p-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] text-slate-500 text-center">
+              Admin: <span className="font-mono font-semibold text-slate-700">admin@agrinexus.demo</span> • <span className="font-mono font-semibold text-slate-700">admin123</span>
+            </div>
+          </div>
         </div>
 
         {/* Create account suggestion */}

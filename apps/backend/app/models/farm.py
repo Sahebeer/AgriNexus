@@ -29,6 +29,7 @@ class Farm(Base):
     boundary_geojson = Column(Text, nullable=True) # GeoJSON polygon string
 
     current_crop = Column(String, nullable=False)
+    crop_type_id = Column(String, nullable=True)
     sowing_date = Column(Date, nullable=False)
     irrigation_method = Column(String, nullable=False) # Drip, Sprinkler, Flood, etc.
 

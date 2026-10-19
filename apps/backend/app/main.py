@@ -48,6 +48,21 @@ try:
     Base.metadata.create_all(bind=engine)
     print("Database tables initialized successfully.")
 
+    # Non-destructive schema check: ensure crop_type_id exists on legacy tables
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(engine)
+        table_names = inspector.get_table_names()
+        with engine.begin() as conn:
+            for tbl in ["farms", "crop_calendars", "mandi_listings"]:
+                if tbl in table_names:
+                    cols = [c["name"] for c in inspector.get_columns(tbl)]
+                    if "crop_type_id" not in cols:
+                        conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN crop_type_id VARCHAR"))
+                        print(f"Migrated {tbl}: added crop_type_id column.")
+    except Exception as col_err:
+        print(f"Schema compatibility notice: {col_err}")
+
     # Provision the dedicated local demonstration account and its complete
     # farm/Sentinel-1 SAR dataset on a fresh installation. The seed function
     # is idempotent and startup deliberately limits it to that demo account.

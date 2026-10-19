@@ -23,6 +23,8 @@ interface FarmMapProps {
   center: [number, number];
   zoom: number;
   onMapCenterChange?: (center: [number, number], zoom: number) => void;
+  // Fit the map to a farm: [[south, west], [north, east]]; `key` changes on every request so repeat clicks re-zoom.
+  focusBounds?: { bounds: [[number, number], [number, number]]; key: number } | null;
 }
 
 export default function FarmMap({
@@ -40,10 +42,12 @@ export default function FarmMap({
   onCompletePolygon,
   customPolygon,
   center,
-  zoom
+  zoom,
+  focusBounds
 }: FarmMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
+  const pendingFocusRef = useRef<[[number, number], [number, number]] | null>(null);
   const tileLayerRef = useRef<any>(null);
   const layersGroupRef = useRef<any>(null);
   const drawingGroupRef = useRef<any>(null);
@@ -77,6 +81,9 @@ export default function FarmMap({
         });
 
         mapInstanceRef.current = map;
+        if (pendingFocusRef.current) {
+          map.fitBounds(pendingFocusRef.current, { padding: [40, 40], maxZoom: 18 });
+        }
       }
     };
 
@@ -130,6 +137,13 @@ export default function FarmMap({
 
     updateTiles();
   }, [baseStyle]);
+
+  // Zoom to fit the selected farm's boundary
+  useEffect(() => {
+    if (!focusBounds) return;
+    pendingFocusRef.current = focusBounds.bounds;
+    mapInstanceRef.current?.flyToBounds(focusBounds.bounds, { padding: [40, 40], maxZoom: 18, duration: 1.2 });
+  }, [focusBounds]);
 
   // Fly to new center when changed
   useEffect(() => {

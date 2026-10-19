@@ -12,6 +12,8 @@ import {
   Plus, RefreshCw, List, LayoutGrid, ArrowRight, Check,
   MapPin, Clock, X,
 } from "lucide-react";
+import CropTypeSelector from "../../../components/common/CropTypeSelector";
+import { getCropTypeLabel } from "../../../lib/cropTypes";
 
 interface CalendarEvent {
   id: number;
@@ -28,6 +30,7 @@ interface CropCalendar {
   id: number;
   name: string;
   crop: string;
+  crop_type_id?: string | null;
   variety: string;
   location: string;
   sow_date: string;
@@ -38,6 +41,7 @@ interface CalendarSummary {
   id: number;
   name: string;
   crop: string;
+  crop_type_id?: string | null;
   sow_date: string;
   location: string;
 }
@@ -86,6 +90,7 @@ export default function CalendarPage() {
 
   const [wizardStep, setWizardStep] = useState(0);
   const [crop, setCrop] = useState("");
+  const [cropTypeId, setCropTypeId] = useState<string | null>(null);
   const [sowDate, setSowDate] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() + 3);
     return d.toISOString().split("T")[0];
@@ -108,6 +113,7 @@ export default function CalendarPage() {
     try {
       const res = await api.post("/api/v1/calendar/generate", {
         crop,
+        crop_type_id: cropTypeId || undefined,
         sow_date: sowDate,
         variety: variety || undefined,
         location: location || undefined,
@@ -274,12 +280,24 @@ export default function CalendarPage() {
                   </div>
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-72 overflow-y-auto pr-1">
                     {CROPS.map(c => (
-                      <button key={c} onClick={() => setCrop(c)}
+                      <button key={c} onClick={() => { setCrop(c); setCropTypeId(null); }}
                         className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all text-left ${crop === c ? "bg-emerald-50 border-emerald-300 text-emerald-800" : "border-slate-200 text-slate-700 hover:bg-slate-50"}`}>
                         {c}
                       </button>
                     ))}
                   </div>
+
+                  {crop && (
+                    <div className="pt-2">
+                      <CropTypeSelector
+                        crop={crop}
+                        value={cropTypeId}
+                        onChange={setCropTypeId}
+                        id="dashboard-calendar-crop-type"
+                      />
+                    </div>
+                  )}
+
                   <button onClick={() => crop ? setWizardStep(1) : showToast("Select a crop", "error")}
                     disabled={!crop}
                     className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 text-xs transition-all shadow-sm">
@@ -321,7 +339,13 @@ export default function CalendarPage() {
                   {/* Summary */}
                   <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-xs">
                     <div className="text-slate-400 font-bold uppercase tracking-wider text-[10px] mb-2">Calendar Summary</div>
-                    {[["Crop", crop], ["Sowing Date", new Date(sowDate + "T00:00:00").toLocaleDateString("en-IN", { day:"numeric", month:"long", year:"numeric" })], ["Variety", variety || "—"], ["Location", location || "—"]].map(([k, v]) => (
+                    {[
+                      ["Crop", crop],
+                      ...(cropTypeId ? [["Crop Type", getCropTypeLabel(crop, cropTypeId)]] : []),
+                      ["Sowing Date", new Date(sowDate + "T00:00:00").toLocaleDateString("en-IN", { day:"numeric", month:"long", year:"numeric" })],
+                      ["Variety", variety || "—"],
+                      ["Location", location || "—"]
+                    ].map(([k, v]) => (
                       <div key={k} className="flex justify-between text-xs"><span className="text-slate-500">{k}</span><span className="text-slate-900 font-semibold">{v}</span></div>
                     ))}
                   </div>
@@ -346,10 +370,15 @@ export default function CalendarPage() {
             <div className="clean-card p-6 bg-white shadow-sm">
               <div className="flex flex-col md:flex-row justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     {activeCalendar.location && (
                       <span className="flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
                         <MapPin className="h-3 w-3" />{activeCalendar.location}
+                      </span>
+                    )}
+                    {activeCalendar.crop_type_id && (
+                      <span className="text-[10px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full">
+                        Type: {getCropTypeLabel(activeCalendar.crop, activeCalendar.crop_type_id)}
                       </span>
                     )}
                     <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
@@ -619,10 +648,15 @@ export default function CalendarPage() {
                 {history.map(cal => (
                   <button key={cal.id} onClick={() => loadCalendar(cal.id)}
                     className="clean-card clean-card-hover p-5 text-left bg-white shadow-sm group">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
                         {new Date(cal.sow_date + "T00:00:00").toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
                       </span>
+                      {cal.crop_type_id && (
+                        <span className="text-[10px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full">
+                          {getCropTypeLabel(cal.crop, cal.crop_type_id)}
+                        </span>
+                      )}
                       {cal.location && (
                         <span className="text-[10px] text-slate-500 flex items-center gap-1">
                           <MapPin className="h-3 w-3" />{cal.location}

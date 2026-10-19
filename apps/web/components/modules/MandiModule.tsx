@@ -20,11 +20,14 @@ import {
   Users,
   Briefcase
 } from "lucide-react";
+import CropTypeSelector from "../common/CropTypeSelector";
+import { getCropTypeLabel } from "../../lib/cropTypes";
 
 interface Listing {
   id: number;
   user_id: number;
   crop: string;
+  crop_type_id?: string | null;
   quantity: number;
   unit: string;
   price_per_unit: number;
@@ -53,6 +56,7 @@ export default function MandiModule({ onBack }: MandiModuleProps) {
 
   // New listing fields
   const [formCrop, setFormCrop] = useState("Wheat");
+  const [formCropTypeId, setFormCropTypeId] = useState<string | null>(null);
   const [formQuantity, setFormQuantity] = useState(10);
   const [formUnit, setFormUnit] = useState("Quintal");
   const [formPrice, setFormPrice] = useState(2400);
@@ -83,6 +87,7 @@ export default function MandiModule({ onBack }: MandiModuleProps) {
     try {
       await api.post("/api/v1/mandi/listings", {
         crop: formCrop,
+        crop_type_id: formCropTypeId || undefined,
         quantity: formQuantity,
         unit: formUnit,
         price_per_unit: formPrice,
@@ -92,6 +97,7 @@ export default function MandiModule({ onBack }: MandiModuleProps) {
         description: formDescription,
       });
       showToast("Marketplace listing published!", "success");
+      setFormCropTypeId(null);
       setShowCreateModal(false);
       fetchListings();
     } catch {
@@ -203,7 +209,14 @@ export default function MandiModule({ onBack }: MandiModuleProps) {
                 <div className="flex items-start justify-between">
                   <div>
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Crop Lot</span>
-                    <h3 className="text-base font-bold text-slate-900 mt-0.5">{item.crop}</h3>
+                    <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                      <h3 className="text-base font-bold text-slate-900">{item.crop}</h3>
+                      {item.crop_type_id && (
+                        <span className="text-[10px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full">
+                          {getCropTypeLabel(item.crop, item.crop_type_id)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                     {item.quantity} {item.unit}
@@ -264,8 +277,11 @@ export default function MandiModule({ onBack }: MandiModuleProps) {
                       type="text"
                       required
                       value={formCrop}
-                      onChange={(e) => setFormCrop(e.target.value)}
-                      placeholder="e.g. Basmati Rice"
+                      onChange={(e) => {
+                        setFormCrop(e.target.value);
+                        setFormCropTypeId(null);
+                      }}
+                      placeholder="e.g. Wheat"
                       className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-600 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 outline-none transition-colors"
                     />
                   </div>
@@ -281,6 +297,13 @@ export default function MandiModule({ onBack }: MandiModuleProps) {
                     />
                   </div>
                 </div>
+
+                <CropTypeSelector
+                  crop={formCrop}
+                  value={formCropTypeId}
+                  onChange={setFormCropTypeId}
+                  id="mandi-module-crop-type"
+                />
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
